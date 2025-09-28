@@ -1,0 +1,74 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Candidate {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  phone     String?
+  resumeUrl String?
+  skills    String[] // Array of skills extracted from resume
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  interviews Interview[]
+
+  @@map("candidates")
+}
+
+model Interview {
+  id              String          @id @default(cuid())
+  candidateId     String
+  status          InterviewStatus @default(IN_PROGRESS)
+  currentQuestion Int             @default(1)
+  totalQuestions  Int             @default(6)
+  score           Int? // Final score out of 100
+  startedAt       DateTime        @default(now())
+  completedAt     DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  candidate Candidate  @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  questions Question[]
+
+  @@map("interviews")
+}
+
+model Question {
+  id             String             @id @default(cuid())
+  interviewId    String
+  questionNumber Int
+  difficulty     QuestionDifficulty
+  question       String
+  answer         String?
+  score          Int? // Score for this specific question
+  feedback       String? // AI feedback for this answer
+  timeSpent      Int? // Time spent in seconds
+  createdAt      DateTime           @default(now())
+
+  interview Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+
+  @@map("questions")
+}
+
+enum InterviewStatus {
+  IN_PROGRESS
+  COMPLETED
+  PAUSED
+  CANCELLED
+}
+
+enum QuestionDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
