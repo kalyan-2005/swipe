@@ -25,8 +25,7 @@ export async function POST(req: Request) {
       For each question, provide a JSON response in this exact format:
       {
         "question": "The actual interview question text",
-        "difficulty": "EASY|MEDIUM|HARD",
-        "solution": "A detailed, concise, and effective solution/explanation for the question"
+        "difficulty": "EASY|MEDIUM|HARD"
       }
       
       ${
@@ -55,8 +54,6 @@ export async function POST(req: Request) {
         question:
           "Explain the difference between controlled and uncontrolled components in React, and provide an example of each.",
         difficulty: "MEDIUM",
-        solution:
-          "Controlled components: Form elements whose values are controlled by React state. Example: An input field with its value tied to `useState`. Uncontrolled components: Form elements whose values are managed by the DOM itself. Example: An input field using a `useRef` to get its value.",
       });
     }
   } catch (err) {
@@ -89,8 +86,6 @@ export async function GET() {
         question:
           "Explain the difference between controlled and uncontrolled components in React, and provide an example of each.",
         difficulty: "MEDIUM",
-        solution:
-          "Controlled components: Form elements whose values are controlled by React state. Example: An input field with its value tied to `useState`. Uncontrolled components: Form elements whose values are managed by the DOM itself. Example: An input field using a `useRef` to get its value.",
       });
     }
   } catch (err) {

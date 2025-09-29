@@ -151,11 +151,6 @@ export default function InterviewPage() {
           currentQ &&
           !currentQ.answer
         ) {
-          // If time is up for the current question and no answer was submitted
-          const solutionResponse = await fetch(
-            `/api/solution?questionId=${currentQ.id}`
-          );
-          const { solution } = await solutionResponse.json();
 
           const updatedQuestions = state.questions.map((q, index) =>
             index === state.currentIndex
@@ -167,7 +162,7 @@ export default function InterviewPage() {
                     "Time up! No answer submitted. Automatically advanced.",
                   timeSpent: getTimeLimitForDifficulty(currentQ.difficulty), // Full time spent
                   submittedAt: Date.now(),
-                  rawSolution: solution,
+                  rawSolution: "",
                 }
               : q
           );
@@ -226,7 +221,7 @@ export default function InterviewPage() {
           index === indexToUpdate ? newQuestion : q
         );
         state.questions = updatedQuestions;
-        let timeLimit = getTimeLimitForDifficulty(newQuestion.difficulty);
+        const timeLimit = getTimeLimitForDifficulty(newQuestion.difficulty);
         state.timerEndsAt = Date.now() + timeLimit * 1000;
         state.isPaused = false;
         state.currentIndex = indexToUpdate; // Ensure current index is set correctly
@@ -297,24 +292,19 @@ export default function InterviewPage() {
     if (!currentAnswer.trim() && timeLeft === 0) {
       // Fetch solution from new API endpoint
       try {
-        const solutionResponse = await fetch(
-          `/api/solution?questionId=${currentQuestion.id}`
-        );
-        if (!solutionResponse.ok) throw new Error("Failed to fetch solution");
-        const { solution } = await solutionResponse.json();
-
         const updatedQuestions = questions.map((q, index) =>
           index === currentQuestionIndex
             ? {
                 ...q,
-                answer: "", // Mark answer as empty
+                answer: "", // Set the fetched solution as the answer
                 score: 0, // Score is 0
-                feedback: "Time up! No answer submitted.",
+                feedback:
+                  "Time up! No answer submitted. Solution automatically provided.",
                 timeSpent:
                   getTimeLimitForDifficulty(currentQuestion.difficulty) -
                   timeLeft, // Full time spent
                 submittedAt: Date.now(),
-                rawSolution: solution,
+                rawSolution: "",
               }
             : q
         );
@@ -413,40 +403,61 @@ export default function InterviewPage() {
   };
 
   const handleNextQuestion = async () => {
-    if (currentQuestionIndex + 1 >= TOTAL_QUESTIONS) {
-      // Interview complete
-      const state = await getInterviewState();
-      if (state) {
-        state.isComplete = true;
-        await saveInterviewState(state);
-      }
-      setIsInterviewComplete(true);
+    // Ensure the current question has been processed (answered or time-upped)
+    // Before moving to the next one.
+    if (!currentQuestion || (!currentQuestion.answer && !showNextButton)) {
+      console.warn(
+        "Cannot move to next question: Current question not processed."
+      );
       return;
     }
 
-    // Generate next question if it's a placeholder
-    const nextIndex = currentQuestionIndex + 1;
-    const nextQuestion = questions[nextIndex];
-    if (nextQuestion && nextQuestion.id.startsWith("q_placeholder")) {
-      await generateQuestion(nextIndex);
-    } else {
-      // If not a placeholder, just update state for next question
-      const state = await getInterviewState();
-      if (state) {
-        state.currentIndex = nextIndex;
-        let timeLimit = getTimeLimitForDifficulty(
-          questions[nextIndex].difficulty
-        );
-        state.timerEndsAt = Date.now() + timeLimit * 1000;
-        state.isPaused = false;
-        await saveInterviewState(state);
+    setCurrentQuestionIndex((prevIndex) => {
+      const nextIndex = prevIndex + 1;
+
+      if (nextIndex >= TOTAL_QUESTIONS) {
+        // Interview complete
+        const completeInterview = async () => {
+          const state = await getInterviewState();
+          if (state) {
+            state.isComplete = true;
+            await saveInterviewState(state);
+          }
+          setIsInterviewComplete(true);
+        };
+        completeInterview();
+        return prevIndex; // Stay on the last question until interview completion UI is shown
       }
-      setCurrentQuestionIndex(nextIndex);
-      setTimeLeft(getTimeLimitForDifficulty(questions[nextIndex].difficulty));
-      setIsPaused(false);
-      setCurrentAnswer("");
-      setShowNextButton(false);
-    }
+
+      const processNextQuestion = async () => {
+        const state = await getInterviewState();
+        if (!state) return;
+
+        // Generate next question if it's a placeholder
+        const nextQuestion = state.questions[nextIndex];
+        if (nextQuestion && nextQuestion.id.startsWith("q_placeholder")) {
+          await generateQuestion(nextIndex); // This function will update state in IndexedDB and component state
+        } else {
+          // If not a placeholder, just update state for next question
+          state.currentIndex = nextIndex;
+          const timeLimit = getTimeLimitForDifficulty(
+            state.questions[nextIndex].difficulty
+          );
+          state.timerEndsAt = Date.now() + timeLimit * 1000;
+          state.isPaused = false;
+          await saveInterviewState(state);
+
+          setQuestions([...state.questions]); // Update questions state from IndexedDB
+          setTimeLeft(timeLimit);
+          setIsPaused(false);
+          setCurrentAnswer("");
+          setShowNextButton(false);
+        }
+      };
+      processNextQuestion();
+
+      return nextIndex;
+    });
   };
 
   const handlePauseResume = async () => {
@@ -473,13 +484,13 @@ export default function InterviewPage() {
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case "EASY":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+        return "bg-green-100 text-green-800";
       case "MEDIUM":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+        return "bg-yellow-100 text-yellow-800";
       case "HARD":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+        return "bg-red-100 text-red-800";
       default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -500,7 +511,7 @@ export default function InterviewPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
@@ -508,10 +519,10 @@ export default function InterviewPage() {
 
   if (!candidateData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <Card className="max-w-md mx-auto">
           <CardContent className="p-6 text-center">
-            <p className="text-gray-600 dark:text-gray-300 mb-4">
+            <p className="text-gray-600 mb-4">
               No candidate data found. Please start over.
             </p>
             <Button onClick={() => router.push("/candidate")}>Go Back</Button>
@@ -524,14 +535,14 @@ export default function InterviewPage() {
   // Fullscreen prompt
   if (showFullscreenPrompt && !isFullscreen) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <Card className="max-w-md mx-auto">
           <CardContent className="p-6 text-center">
             <Maximize2 className="h-16 w-16 text-blue-600 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">
               Fullscreen Required
             </h1>
-            <p className="text-gray-600 dark:text-gray-300 mb-6">
+            <p className="text-gray-600 mb-6">
               For the best interview experience, please enter fullscreen mode.
               This helps you focus on the questions without distractions.
             </p>
@@ -547,7 +558,7 @@ export default function InterviewPage() {
 
   if (isInterviewComplete) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <div className="min-h-screen bg-white">
         <div className="container mx-auto px-4 py-12">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -555,10 +566,10 @@ export default function InterviewPage() {
             className="max-w-2xl mx-auto text-center"
           >
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-6" />
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
               Interview Complete!
             </h1>
-            <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
+            <p className="text-xl text-gray-600 mb-8">
               Great job, {candidateData.name}! Your interview has been
               completed.
             </p>
@@ -587,19 +598,19 @@ export default function InterviewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
+    <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
       <motion.div
         initial={false}
         animate={{ width: sidebarOpen ? 320 : 0 }}
-        className="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-hidden"
+        className="bg-white border-r border-gray-200 overflow-hidden"
       >
         <div className="p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
               <Target className="h-6 w-6 text-blue-600" />
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              <h2 className="text-lg font-semibold text-gray-900">
                 Interview Progress
               </h2>
             </div>
@@ -613,13 +624,11 @@ export default function InterviewPage() {
           </div>
 
           {/* Candidate Info */}
-          <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <h3 className="font-medium text-gray-900 dark:text-white mb-2">
+          <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+            <h3 className="font-medium text-gray-900 mb-2">
               {candidateData.name}
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              {candidateData.email}
-            </p>
+            <p className="text-sm text-gray-600">{candidateData.email}</p>
           </div>
 
           {/* Timer */}
@@ -627,14 +636,12 @@ export default function InterviewPage() {
             <CardContent className="p-4 text-center">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Timer className="h-5 w-5 text-gray-500" />
-                <span className="text-sm text-gray-600 dark:text-gray-300">
-                  Time Remaining
-                </span>
+                <span className="text-sm text-gray-600">Time Remaining</span>
               </div>
               <div className={`text-3xl font-bold ${getTimerColor()}`}>
                 {timeLeft}s
               </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
+              <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                 <div
                   className={`h-2 rounded-full transition-all duration-1000 ${
                     timeLeft <= 5
@@ -657,7 +664,7 @@ export default function InterviewPage() {
 
           {/* Questions List */}
           <div className="space-y-2">
-            <h4 className="font-medium text-gray-900 dark:text-white mb-3">
+            <h4 className="font-medium text-gray-900 mb-3">
               Questions ({currentQuestionIndex + 1}/{TOTAL_QUESTIONS})
             </h4>
             {Array.from({ length: TOTAL_QUESTIONS }).map((_, index) => {
@@ -675,14 +682,14 @@ export default function InterviewPage() {
                   transition={{ delay: index * 0.05 }}
                   className={`p-3 rounded-lg transition-all ${
                     isClickable
-                      ? "cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700"
+                      ? "cursor-pointer hover:bg-gray-200"
                       : "cursor-not-allowed opacity-50"
                   } ${
                     isCurrent
-                      ? "bg-blue-100 dark:bg-blue-900 border-2 border-blue-500"
+                      ? "bg-blue-100 border-2 border-blue-500"
                       : isAnswered
-                      ? "bg-green-100 dark:bg-green-900"
-                      : "bg-gray-100 dark:bg-gray-700"
+                      ? "bg-green-100"
+                      : "bg-gray-100"
                   }`}
                   onClick={() => isClickable && setCurrentQuestionIndex(index)}
                 >
@@ -693,13 +700,13 @@ export default function InterviewPage() {
                           ? "bg-blue-500 text-white"
                           : isAnswered
                           ? "bg-green-500 text-white"
-                          : "bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400"
+                          : "bg-gray-300 text-gray-600"
                       }`}
                     >
                       {isAnswered ? "✓" : index + 1}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      <p className="text-sm font-medium text-gray-900 truncate">
                         {question?.question || `Question ${index + 1}`}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
@@ -713,14 +720,12 @@ export default function InterviewPage() {
                           </Badge>
                         )}
                         {question?.score !== undefined && (
-                          <span className="text-xs text-green-600 dark:text-green-400">
+                          <span className="text-xs text-green-600">
                             {question.score}%
                           </span>
                         )}
                         {!isClickable && (
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            Locked
-                          </span>
+                          <span className="text-xs text-gray-500">Locked</span>
                         )}
                       </div>
                     </div>
@@ -735,7 +740,7 @@ export default function InterviewPage() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Top Bar */}
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               {!sidebarOpen && (
@@ -748,22 +753,22 @@ export default function InterviewPage() {
                 </Button>
               )}
               <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                <h1 className="text-xl font-bold text-gray-900">
                   Question {currentQuestionIndex + 1} of {questions.length}
                 </h1>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge
                     className={`${
                       currentQuestion.difficulty === "EASY"
-                        ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                        ? "bg-green-100 text-green-800"
                         : currentQuestion.difficulty === "MEDIUM"
-                        ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                        : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-red-100 text-red-800"
                     }`}
                   >
                     {currentQuestion.difficulty}
                   </Badge>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                  <span className="text-sm text-gray-500">
                     {candidateData.name}
                   </span>
                 </div>
@@ -803,7 +808,7 @@ export default function InterviewPage() {
           <Card className="h-full">
             <CardContent className="p-8 h-full flex flex-col">
               <div className="flex-1">
-                <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-8">
+                <h2 className="text-2xl font-semibold text-gray-900 mb-8">
                   {currentQuestion.question}
                 </h2>
 
@@ -823,11 +828,11 @@ export default function InterviewPage() {
                   {timeLeft === 0 &&
                     !currentAnswer.trim() &&
                     currentQuestion.rawSolution && (
-                      <div className="space-y-4 p-4 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700">
-                        <h3 className="text-lg font-semibold text-red-700 dark:text-red-300">
+                      <div className="space-y-4 p-4 rounded-md bg-red-50 border border-red-200">
+                        <h3 className="text-lg font-semibold text-red-700">
                           Time Up! No Answer Submitted.
                         </h3>
-                        <div className="text-gray-700 dark:text-gray-300">
+                        <div className="text-gray-700">
                           <h4 className="font-medium mb-2">
                             Suggested Solution:
                           </h4>
@@ -839,15 +844,15 @@ export default function InterviewPage() {
                     )}
 
                   {currentQuestion.feedback && currentQuestion.answer && (
-                    <div className="space-y-4 p-4 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700">
-                      <h3 className="text-lg font-semibold text-blue-700 dark:text-blue-300">
+                    <div className="space-y-4 p-4 rounded-md bg-blue-50 border border-blue-200">
+                      <h3 className="text-lg font-semibold text-blue-700">
                         Feedback & Score: {currentQuestion.score}%
                       </h3>
-                      <p className="text-gray-700 dark:text-gray-300">
+                      <p className="text-gray-700">
                         {currentQuestion.feedback}
                       </p>
                       {currentQuestion.rawSolution && (
-                        <div className="text-gray-700 dark:text-gray-300">
+                        <div className="text-gray-700">
                           <h4 className="font-medium mb-2">
                             Suggested Solution:
                           </h4>
@@ -861,7 +866,7 @@ export default function InterviewPage() {
 
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-4">
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                      <p className="text-sm text-gray-500">
                         {currentAnswer.length} characters
                       </p>
                       {timeLeft <= 10 && timeLeft > 0 && (
@@ -877,7 +882,8 @@ export default function InterviewPage() {
                         size="lg"
                         className="px-8"
                       >
-                        {questions.length >= TOTAL_QUESTIONS ? (
+                        {questions.filter((q) => q.timeSpent && q.timeSpent > 0)
+                          .length >= TOTAL_QUESTIONS ? (
                           <>
                             <CheckCircle className="h-4 w-4 mr-2" />
                             Complete Interview

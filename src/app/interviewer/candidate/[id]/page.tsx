@@ -21,8 +21,6 @@ import {
   Clock,
   Target,
   TrendingUp,
-  CheckCircle,
-  AlertCircle,
   Star,
   FileText,
 } from "lucide-react";
@@ -51,93 +49,6 @@ interface Candidate {
   questions: Question[];
 }
 
-// Mock data for demonstration
-const MOCK_CANDIDATE: Candidate = {
-  id: "1",
-  name: "John Doe",
-  email: "john.doe@email.com",
-  phone: "+1 (555) 123-4567",
-  skills: ["React", "TypeScript", "Node.js", "PostgreSQL", "AWS", "Docker"],
-  interviewCount: 1,
-  averageScore: 85,
-  lastInterview: "2024-01-15T10:30:00Z",
-  status: "completed",
-  questions: [
-    {
-      id: "1",
-      question:
-        "Can you tell me about yourself and your experience with React?",
-      difficulty: "EASY",
-      answer:
-        "I have 3 years of experience with React, working on various projects including e-commerce platforms and dashboards. I'm proficient in hooks, state management with Redux, and have experience with testing using Jest and React Testing Library.",
-      score: 88,
-      feedback:
-        "Excellent answer! You demonstrated strong understanding of React fundamentals and provided specific examples of your experience.",
-      timeSpent: 18,
-    },
-    {
-      id: "2",
-      question:
-        "What are the key differences between useState and useEffect hooks?",
-      difficulty: "EASY",
-      answer:
-        "useState is for managing component state, while useEffect handles side effects. useState returns a state value and setter function, useEffect runs after render and can have dependencies.",
-      score: 82,
-      feedback:
-        "Good understanding of the basics. Consider mentioning the dependency array in useEffect and the difference between mounting and updating effects.",
-      timeSpent: 15,
-    },
-    {
-      id: "3",
-      question:
-        "How would you optimize a React application that is experiencing performance issues?",
-      difficulty: "MEDIUM",
-      answer:
-        "I would use React.memo for component memoization, useMemo and useCallback for expensive calculations, implement code splitting with React.lazy, and use React DevTools Profiler to identify bottlenecks.",
-      score: 90,
-      feedback:
-        "Outstanding answer! You covered all the major optimization techniques and mentioned the right tools for profiling.",
-      timeSpent: 20,
-    },
-    {
-      id: "4",
-      question:
-        "Explain the concept of closures in JavaScript and provide a practical example.",
-      difficulty: "MEDIUM",
-      answer:
-        "A closure is when a function has access to variables in its outer scope even after the outer function returns. Example: function outer() { let count = 0; return function inner() { return ++count; }; }",
-      score: 78,
-      feedback:
-        "Good example! You could have explained more about the practical use cases of closures in React and how they help with data privacy.",
-      timeSpent: 19,
-    },
-    {
-      id: "5",
-      question:
-        "Design a scalable architecture for a real-time chat application with millions of users.",
-      difficulty: "HARD",
-      answer:
-        "I would use microservices architecture with WebSocket connections, Redis for session management, message queues like RabbitMQ, horizontal scaling with load balancers, and CDN for static assets.",
-      score: 85,
-      feedback:
-        "Very good architectural thinking! Consider mentioning database sharding, caching strategies, and specific technologies like Socket.io or Pusher for real-time features.",
-      timeSpent: 20,
-    },
-    {
-      id: "6",
-      question:
-        "How would you implement a custom hook for managing complex state with undo/redo functionality?",
-      difficulty: "HARD",
-      answer:
-        "I would create a useUndoRedo hook that maintains a history array of states, with functions to undo, redo, and update state. It would use useReducer for complex state management.",
-      score: 80,
-      feedback:
-        "Good approach! The useReducer suggestion is excellent. Consider mentioning the implementation details of the history management and how to handle edge cases.",
-      timeSpent: 20,
-    },
-  ],
-};
-
 export default function CandidateDetailPage({
   params,
 }: {
@@ -151,12 +62,46 @@ export default function CandidateDetailPage({
     // Simulate API call
     const fetchCandidate = async () => {
       setIsLoading(true);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setCandidate(MOCK_CANDIDATE);
-      setIsLoading(false);
+      try {
+        const response = await fetch(`/api/interview?interviewId=${params.id}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+
+        // Transform the fetched data to match the Candidate interface
+        const transformedCandidate: Candidate = {
+          id: data.candidate.id,
+          name: data.candidate.name,
+          email: data.candidate.email,
+          phone: data.candidate.phone,
+          skills: data.candidate.skills || [], // Assuming skills might be an array in candidate or an empty array
+          interviewCount: 1, // This will need to be fetched dynamically if multiple interviews per candidate are supported
+          averageScore: data.score,
+          lastInterview: data.completedAt,
+          status: data.status === "COMPLETED" ? "completed" : "in-progress", // Map status from API to frontend interface
+          questions: data.questions.map((q: Question) => ({
+            id: q.id,
+            question: q.question,
+            difficulty: q.difficulty,
+            answer: q.answer,
+            score: q.score,
+            feedback: q.feedback,
+            timeSpent: q.timeSpent,
+          })),
+        };
+        setCandidate(transformedCandidate);
+      } catch (error) {
+        console.error("Error fetching candidate data:", error);
+        setCandidate(null); // Set candidate to null on error
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    fetchCandidate();
+    if (params.id) {
+      fetchCandidate();
+    }
   }, [params.id]);
 
   if (isLoading) {
@@ -457,7 +402,7 @@ export default function CandidateDetailPage({
                     <div className="space-y-4">
                       <div>
                         <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Candidate's Answer:
+                          Candidate&apos;s Answer:
                         </h4>
                         <p className="text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-3 rounded">
                           {question.answer}

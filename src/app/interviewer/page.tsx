@@ -34,80 +34,11 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-
-interface Candidate {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  skills: string[];
-  interviewCount: number;
-  averageScore: number;
-  lastInterview: string;
-  status: "completed" | "in-progress" | "not-started";
-}
-
-// Mock data - in a real app, this would come from your database
-const MOCK_CANDIDATES: Candidate[] = [
-  {
-    id: "1",
-    name: "John Doe",
-    email: "john.doe@email.com",
-    phone: "+1 (555) 123-4567",
-    skills: ["React", "TypeScript", "Node.js"],
-    interviewCount: 1,
-    averageScore: 85,
-    lastInterview: "2024-01-15T10:30:00Z",
-    status: "completed",
-  },
-  {
-    id: "2",
-    name: "Jane Smith",
-    email: "jane.smith@email.com",
-    phone: "+1 (555) 987-6543",
-    skills: ["Python", "Django", "PostgreSQL"],
-    interviewCount: 2,
-    averageScore: 92,
-    lastInterview: "2024-01-14T14:20:00Z",
-    status: "completed",
-  },
-  {
-    id: "3",
-    name: "Mike Johnson",
-    email: "mike.johnson@email.com",
-    skills: ["Java", "Spring Boot", "AWS"],
-    interviewCount: 0,
-    averageScore: 0,
-    lastInterview: "",
-    status: "not-started",
-  },
-  {
-    id: "4",
-    name: "Sarah Wilson",
-    email: "sarah.wilson@email.com",
-    phone: "+1 (555) 456-7890",
-    skills: ["Vue.js", "Express", "MongoDB"],
-    interviewCount: 1,
-    averageScore: 78,
-    lastInterview: "2024-01-13T16:45:00Z",
-    status: "completed",
-  },
-  {
-    id: "5",
-    name: "Alex Brown",
-    email: "alex.brown@email.com",
-    skills: ["Angular", "C#", "SQL Server"],
-    interviewCount: 1,
-    averageScore: 0,
-    lastInterview: "2024-01-15T09:15:00Z",
-    status: "in-progress",
-  },
-];
+import { Candidate } from "@prisma/client";
 
 export default function InterviewerDashboard() {
-  const [candidates, setCandidates] = useState<Candidate[]>(MOCK_CANDIDATES);
-  const [filteredCandidates, setFilteredCandidates] =
-    useState<Candidate[]>(MOCK_CANDIDATES);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [filteredCandidates, setFilteredCandidates] = useState<Candidate[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<
     "all" | "completed" | "in-progress" | "not-started"
@@ -117,6 +48,20 @@ export default function InterviewerDashboard() {
   >("all");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const [sortConfig, setSortConfig] = useState<{
+    key: string;
+    direction: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const fetchCandidates = async () => {
+      const response = await fetch("/api/dashboard");
+      const result = await response.json();
+      setCandidates(result);
+      setFilteredCandidates(result);
+    };
+    fetchCandidates();
+  }, []);
 
   useEffect(() => {
     let filtered = candidates;
@@ -125,59 +70,89 @@ export default function InterviewerDashboard() {
     if (searchTerm) {
       filtered = filtered.filter(
         (candidate) =>
-          candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          candidate.email.toLowerCase().includes(searchTerm.toLowerCase())
+          candidate.candidate.name
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          candidate.candidate.email
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase())
       );
     }
-
-    // Status filter
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(
-        (candidate) => candidate.status === statusFilter
-      );
-    }
-
     // Score filter
     if (scoreFilter !== "all") {
       filtered = filtered.filter((candidate) => {
-        if (scoreFilter === "high") return candidate.averageScore >= 80;
+        const averageScore =
+          candidate.questions.length > 0
+            ? candidate.questions.reduce(
+                (sum, question) => sum + question.score,
+                0
+              ) / candidate.questions.length
+            : 0;
+        if (scoreFilter === "high") return averageScore >= 80;
         if (scoreFilter === "medium")
-          return candidate.averageScore >= 60 && candidate.averageScore < 80;
-        if (scoreFilter === "low")
-          return candidate.averageScore < 60 && candidate.averageScore > 0;
+          return averageScore >= 60 && averageScore < 80;
+        if (scoreFilter === "low") return averageScore < 60 && averageScore > 0;
         return true;
       });
     }
 
+    // Apply sorting
+    if (sortConfig !== null) {
+      filtered.sort((a, b) => {
+        let aValue: any;
+        let bValue: any;
+
+        switch (sortConfig.key) {
+          case "name":
+            aValue = a.candidate.name;
+            bValue = b.candidate.name;
+            break;
+          case "email":
+            aValue = a.candidate.email;
+            bValue = b.candidate.email;
+            break;
+          case "averageScore":
+            aValue =
+              a.questions.length > 0
+                ? a.questions.reduce(
+                    (sum, question) => sum + question.score,
+                    0
+                  ) / a.questions.length
+                : 0;
+            bValue =
+              b.questions.length > 0
+                ? b.questions.reduce(
+                    (sum, question) => sum + question.score,
+                    0
+                  ) / b.questions.length
+                : 0;
+            break;
+          case "date":
+            aValue = new Date(a.createdAt).getTime();
+            bValue = new Date(b.createdAt).getTime();
+            break;
+          default:
+            return 0;
+        }
+
+        if (aValue < bValue) {
+          return sortConfig.direction === "ascending" ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === "ascending" ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+
     setFilteredCandidates(filtered);
-  }, [candidates, searchTerm, statusFilter, scoreFilter]);
+  }, [candidates, searchTerm, statusFilter, scoreFilter, sortConfig]);
 
   const handleRefresh = async () => {
     setIsLoading(true);
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1000));
     setIsLoading(false);
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "completed":
-        return (
-          <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-            Completed
-          </Badge>
-        );
-      case "in-progress":
-        return (
-          <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-            In Progress
-          </Badge>
-        );
-      case "not-started":
-        return <Badge variant="outline">Not Started</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
   };
 
   const getScoreColor = (score: number) => {
@@ -187,27 +162,19 @@ export default function InterviewerDashboard() {
     return "text-gray-500 dark:text-gray-400";
   };
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "Never";
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  const handleSort = (key: string) => {
+    let direction = "ascending";
+    if (
+      sortConfig &&
+      sortConfig.key === key &&
+      sortConfig.direction === "ascending"
+    ) {
+      direction = "descending";
+    }
+    setSortConfig({ key, direction });
   };
 
-  const totalCandidates = candidates.length;
-  const completedInterviews = candidates.filter(
-    (c) => c.status === "completed"
-  ).length;
-  const averageScore =
-    candidates
-      .filter((c) => c.averageScore > 0)
-      .reduce((sum, c) => sum + c.averageScore, 0) /
-      candidates.filter((c) => c.averageScore > 0).length || 0;
-
+  // return JSON.stringify(filteredCandidates, null, 2);
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       {/* Navigation */}
@@ -247,86 +214,6 @@ export default function InterviewerDashboard() {
           transition={{ duration: 0.8 }}
           className="max-w-7xl mx-auto"
         >
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-              Candidate Management
-            </h1>
-            <p className="text-gray-600 dark:text-gray-300">
-              Monitor and review candidate interviews and performance
-            </p>
-          </div>
-
-          {/* Stats Cards */}
-          <div className="grid md:grid-cols-4 gap-6 mb-8">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                      Total Candidates
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {totalCandidates}
-                    </p>
-                  </div>
-                  <Users className="h-8 w-8 text-blue-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                      Completed
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {completedInterviews}
-                    </p>
-                  </div>
-                  <CheckCircle className="h-8 w-8 text-green-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                      Average Score
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {Math.round(averageScore)}%
-                    </p>
-                  </div>
-                  <TrendingUp className="h-8 w-8 text-purple-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                      In Progress
-                    </p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {
-                        candidates.filter((c) => c.status === "in-progress")
-                          .length
-                      }
-                    </p>
-                  </div>
-                  <Clock className="h-8 w-8 text-yellow-600" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
           {/* Filters */}
           <Card className="mb-8">
             <CardContent className="p-6">
@@ -343,16 +230,6 @@ export default function InterviewerDashboard() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value as any)}
-                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                  >
-                    <option value="all">All Status</option>
-                    <option value="completed">Completed</option>
-                    <option value="in-progress">In Progress</option>
-                    <option value="not-started">Not Started</option>
-                  </select>
                   <select
                     value={scoreFilter}
                     onChange={(e) => setScoreFilter(e.target.value as any)}
@@ -381,13 +258,53 @@ export default function InterviewerDashboard() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Skills</TableHead>
-                      <TableHead>Interviews</TableHead>
-                      <TableHead>Average Score</TableHead>
-                      <TableHead>Last Interview</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
+                        onClick={() => handleSort("name")}
+                      >
+                        Name
+                        {sortConfig?.key === "name" && (
+                          <span>
+                            {sortConfig.direction === "ascending" ? " ↑" : " ↓"}
+                          </span>
+                        )}
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
+                        onClick={() => handleSort("email")}
+                      >
+                        Email
+                        {sortConfig?.key === "email" && (
+                          <span>
+                            {sortConfig.direction === "ascending" ? " ↑" : " ↓"}
+                          </span>
+                        )}
+                      </TableHead>
+                      {/* <TableHead>Skills</TableHead> */}
+                      {/* <TableHead>Interviews</TableHead> */}
+                      <TableHead
+                        className="cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
+                        onClick={() => handleSort("averageScore")}
+                      >
+                        Average Score
+                        {sortConfig?.key === "averageScore" && (
+                          <span>
+                            {sortConfig.direction === "ascending" ? " ↑" : " ↓"}
+                          </span>
+                        )}
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
+                        onClick={() => handleSort("date")}
+                      >
+                        Date
+                        {sortConfig?.key === "date" && (
+                          <span>
+                            {sortConfig.direction === "ascending" ? " ↑" : " ↓"}
+                          </span>
+                        )}
+                      </TableHead>
+                      {/* <TableHead>Status</TableHead> */}
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -398,12 +315,12 @@ export default function InterviewerDashboard() {
                         className="hover:bg-gray-50 dark:hover:bg-gray-800"
                       >
                         <TableCell className="font-medium">
-                          {candidate.name}
+                          {candidate.candidate.name}
                         </TableCell>
-                        <TableCell>{candidate.email}</TableCell>
-                        <TableCell>
+                        <TableCell>{candidate.candidate.email}</TableCell>
+                        {/* <TableCell>
                           <div className="flex flex-wrap gap-1">
-                            {candidate.skills
+                            {candidate.candidate.skills.length > 0 ? candidate.candidate.skills
                               .slice(0, 2)
                               .map((skill, index) => (
                                 <Badge
@@ -413,29 +330,39 @@ export default function InterviewerDashboard() {
                                 >
                                   {skill}
                                 </Badge>
-                              ))}
-                            {candidate.skills.length > 2 && (
+                              )) : null}
+                            {candidate.skills.length > 2 ? (
                               <Badge variant="outline" className="text-xs">
                                 +{candidate.skills.length - 2}
                               </Badge>
-                            )}
+                            ) : null}
                           </div>
-                        </TableCell>
-                        <TableCell>{candidate.interviewCount}</TableCell>
+                        </TableCell> */}
                         <TableCell>
                           <span
-                            className={getScoreColor(candidate.averageScore)}
+                            className={getScoreColor(
+                              candidate.questions.length > 0
+                                ? candidate.questions.reduce(
+                                    (sum, question) => sum + question.score,
+                                    0
+                                  ) / candidate.questions.length
+                                : 0
+                            )}
                           >
-                            {candidate.averageScore > 0
-                              ? `${candidate.averageScore}%`
+                            {candidate.questions.length > 0
+                              ? `${
+                                  candidate.questions.reduce(
+                                    (sum, question) => sum + question.score,
+                                    0
+                                  ) / candidate.questions.length
+                                }%`
                               : "N/A"}
                           </span>
                         </TableCell>
                         <TableCell>
-                          {formatDate(candidate.lastInterview)}
-                        </TableCell>
-                        <TableCell>
-                          {getStatusBadge(candidate.status)}
+                          {candidate.createdAt
+                            ? new Date(candidate.createdAt).toLocaleDateString()
+                            : "N/A"}
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
@@ -451,11 +378,9 @@ export default function InterviewerDashboard() {
                               <Eye className="h-4 w-4 mr-1" />
                               View
                             </Button>
-                            {candidate.averageScore > 0 && (
-                              <Button size="sm" variant="outline">
-                                <Download className="h-4 w-4" />
-                              </Button>
-                            )}
+                            <Button size="sm" variant="outline">
+                              <Download className="h-4 w-4" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>

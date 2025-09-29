@@ -52,33 +52,58 @@ export default function ResultsPage() {
   const [report, setReport] = useState<Report | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
+    // Retrieve email from local storage
+    const email = localStorage.getItem("email");
+    if (email) {
+      setUserEmail(email);
+    } else {
+      // If no email, redirect to home or an error page
+      router.push("/candidate");
+      return;
+    }
+
     const loadResults = async () => {
       try {
-        const state = await getInterviewState();
-        const candidate = await getCandidateData();
+        // const state = await getInterviewState(); // Remove or comment out IndexedDB fetches
+        // const candidate = await getCandidateData();
 
-        if (!state || !candidate) {
+        if (!userEmail) return; // Wait for email to be set
+
+        const response = await fetch(
+          `/api/interview-by-email?email=${userEmail}`
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            `Error fetching interview data: ${response.statusText}`
+          );
+        }
+
+        const interviewData = await response.json();
+
+        if (!interviewData) {
           router.push("/candidate");
           return;
         }
 
-        setQuestions(state.questions);
-        setCandidateData(candidate);
+        setQuestions(interviewData.questions);
+        setCandidateData(interviewData.candidate);
 
-        // Generate final report
-        const response = await fetch("/api/report", {
+        // Generate final report using the fetched data
+        const reportResponse = await fetch("/api/interview", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            questions: state.questions,
-            candidateData: candidate,
+            questions: interviewData.questions,
+            candidateData: interviewData.candidate,
           }),
         });
 
-        if (response.ok) {
-          const reportData = await response.json();
+        if (reportResponse.ok) {
+          const reportData = await reportResponse.json();
           setReport(reportData);
         }
 
@@ -89,8 +114,10 @@ export default function ResultsPage() {
       }
     };
 
-    loadResults();
-  }, [router]);
+    if (userEmail) {
+      loadResults();
+    }
+  }, [router, userEmail]);
 
   if (isLoading) {
     return (

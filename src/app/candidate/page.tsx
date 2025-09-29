@@ -241,6 +241,7 @@ export default function CandidatePage() {
         createdAt: Date.now(),
       };
       await saveCandidateData(candidateData);
+      localStorage.setItem("candidateData", JSON.stringify(candidateData));
       router.push("/candidate/lobby");
     }, 3000);
   };
@@ -276,14 +277,14 @@ export default function CandidatePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-white">
       {/* Navigation */}
-      <nav className="border-b bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+      <nav className="border-b bg-white/80 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Bot className="h-8 w-8 text-blue-600" />
-              <span className="text-2xl font-bold text-gray-900 dark:text-white">
+              <span className="text-2xl font-bold text-gray-900">
                 AI Interview Assistant
               </span>
             </div>
@@ -323,7 +324,7 @@ export default function CandidatePage() {
                         className={`max-w-[80%] rounded-lg p-4 ${
                           message.type === "user"
                             ? "bg-blue-600 text-white"
-                            : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white"
+                            : "bg-gray-100 text-gray-900"
                         }`}
                       >
                         {message.isTyping ? (
@@ -349,8 +350,8 @@ export default function CandidatePage() {
                     {...getRootProps()}
                     className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
                       isDragActive
-                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                        : "border-gray-300 dark:border-gray-600 hover:border-blue-400"
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-300 hover:border-blue-400"
                     }`}
                   >
                     <input {...getInputProps()} />
@@ -358,20 +359,18 @@ export default function CandidatePage() {
                     {isUploading ? (
                       <div className="space-y-2">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                        <p className="text-gray-600 dark:text-gray-300">
+                        <p className="text-gray-600">
                           Processing your resume...
                         </p>
                       </div>
                     ) : isDragActive ? (
-                      <p className="text-blue-600 dark:text-blue-400">
-                        Drop your resume here...
-                      </p>
+                      <p className="text-blue-600">Drop your resume here...</p>
                     ) : (
                       <div>
-                        <p className="text-gray-600 dark:text-gray-300 mb-2">
+                        <p className="text-gray-600 mb-2">
                           Drag &amp; drop your resume here, or click to select
                         </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                        <p className="text-sm text-gray-500">
                           Supports PDF files only
                         </p>
                       </div>
@@ -460,7 +459,7 @@ export default function CandidatePage() {
                         {resumeData.skills.map((skill, index) => (
                           <span
                             key={index}
-                            className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm"
+                            className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
                           >
                             {skill}
                           </span>
@@ -486,7 +485,7 @@ export default function CandidatePage() {
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="border-t p-4 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 flex items-center gap-2 text-red-700 dark:text-red-400"
+                  className="border-t p-4 bg-red-50 border-red-200 flex items-center gap-2 text-red-700"
                 >
                   <AlertCircle className="h-5 w-5" />
                   {uploadError}

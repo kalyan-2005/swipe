@@ -29,7 +29,6 @@ model Interview {
   id              String          @id @default(cuid())
   candidateId     String
   status          InterviewStatus @default(IN_PROGRESS)
-  currentQuestion Int             @default(1)
   totalQuestions  Int             @default(6)
   score           Int? // Final score out of 100
   startedAt       DateTime        @default(now())

@@ -21,6 +21,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { getCandidateData } from "@/lib/indexedDB";
 
 interface CandidateData {
   name: string;
@@ -37,12 +38,15 @@ export default function LobbyPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const data = localStorage.getItem("candidateData");
+    const fetchCandidateData = async () => {
+    const data = await getCandidateData();
     if (data) {
-      setCandidateData(JSON.parse(data));
-    } else {
-      router.push("/candidate");
-    }
+      setCandidateData(data);
+      } else {
+        router.push("/candidate");
+      }
+    };
+    fetchCandidateData();
     setIsLoading(false);
   }, [router]);
 
