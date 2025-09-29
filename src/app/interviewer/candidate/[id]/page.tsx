@@ -59,7 +59,6 @@ export default function CandidateDetailPage({
   const router = useRouter();
 
   useEffect(() => {
-    // Simulate API call
     const fetchCandidate = async () => {
       setIsLoading(true);
       try {
@@ -69,14 +68,13 @@ export default function CandidateDetailPage({
         }
         const data = await response.json();
 
-        // Transform the fetched data to match the Candidate interface
         const transformedCandidate: Candidate = {
           id: data.candidate.id,
           name: data.candidate.name,
           email: data.candidate.email,
           phone: data.candidate.phone,
-          skills: data.candidate.skills || [], // Assuming skills might be an array in candidate or an empty array
-          interviewCount: 1, // This will need to be fetched dynamically if multiple interviews per candidate are supported
+          skills: data.candidate.skills || [],
+          interviewCount: 1,
           averageScore: data.score,
           lastInterview: data.completedAt,
           status: data.status === "COMPLETED" ? "completed" : "in-progress", // Map status from API to frontend interface
@@ -93,7 +91,7 @@ export default function CandidateDetailPage({
         setCandidate(transformedCandidate);
       } catch (error) {
         console.error("Error fetching candidate data:", error);
-        setCandidate(null); // Set candidate to null on error
+        setCandidate(null);
       } finally {
         setIsLoading(false);
       }
@@ -180,11 +178,15 @@ export default function CandidateDetailPage({
               <Button
                 variant="outline"
                 onClick={() => router.push("/interviewer")}
+                className="hover:bg-gray-100 dark:hover:bg-gray-800"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Dashboard
               </Button>
-              <Button variant="outline">
+              <Button
+                variant="outline"
+                className="hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
                 <Download className="h-4 w-4 mr-2" />
                 Download Report
               </Button>

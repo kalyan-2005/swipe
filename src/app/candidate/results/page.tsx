@@ -2,15 +2,12 @@
 
 import { useEffect, useState } from "react";
 import {
-  getInterviewState,
-  getCandidateData,
   type Question,
   type CandidateData,
 } from "@/lib/indexedDB";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle,
@@ -55,22 +52,17 @@ export default function ResultsPage() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    // Retrieve email from local storage
     const email = localStorage.getItem("email");
     if (email) {
       setUserEmail(email);
     } else {
-      // If no email, redirect to home or an error page
       router.push("/candidate");
       return;
     }
 
     const loadResults = async () => {
       try {
-        // const state = await getInterviewState(); // Remove or comment out IndexedDB fetches
-        // const candidate = await getCandidateData();
-
-        if (!userEmail) return; // Wait for email to be set
+        if (!userEmail) return;
 
         const response = await fetch(
           `/api/interview-by-email?email=${userEmail}`
@@ -91,8 +83,6 @@ export default function ResultsPage() {
 
         setQuestions(interviewData.questions);
         setCandidateData(interviewData.candidate);
-
-        // Generate final report using the fetched data
         const reportResponse = await fetch("/api/interview", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -198,19 +188,6 @@ export default function ResultsPage() {
                   <span>{candidateData.phone}</span>
                 </div>
               </div>
-              {/* <div className="mt-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Target className="h-4 w-4 text-gray-500" />
-                  <span className="font-medium">Skills:</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {candidateData.skills.map((skill, index) => (
-                    <Badge key={index} variant="secondary">
-                      {skill}
-                    </Badge>
-                  ))}
-                </div>
-              </div> */}
             </CardContent>
           </Card>
         )}

@@ -1,14 +1,10 @@
-// app/api/evaluate/route.ts
-
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 
-// Initialize the Google Generative AI client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export async function POST(req: Request) {
   try {
-    // 1. Get the question and answer from the request body
     const { question, answer } = await req.json();
 
     if (!question || !answer) {
@@ -17,11 +13,7 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-
-    // 2. Select the Gemini model
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-    // 3. Craft a detailed prompt for the AI
     const prompt = `
       You are an expert technical interview evaluator.
       Your task is to assess the user's answer to a given question.
@@ -37,15 +29,11 @@ export async function POST(req: Request) {
       Evaluate the answer and provide ONLY a valid JSON response in this exact format:
       { "score": 85, "feedback": "Your answer demonstrates good understanding of the concept. You covered the main points well, but could benefit from more specific examples and deeper technical details." }
       
-      Score should be between 0-100. Feedback should be constructive and specific.
+      Score should be between 0-100. Feedback should be constructive and specific and not too long(maximum of 5-6 lines).
     `;
-
-    // 4. Send the prompt to the model and get the response
     const result = await model.generateContent(prompt);
     const response = result.response;
     const text = response.text();
-
-    // 5. Parse the JSON response
     try {
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const jsonString = jsonMatch ? jsonMatch[1] : text;
@@ -53,7 +41,6 @@ export async function POST(req: Request) {
       return NextResponse.json(evaluation);
     } catch (parseError) {
       console.error("Error parsing AI response:", parseError);
-      // Fallback response if JSON parsing fails
       return NextResponse.json({
         score: 70,
         feedback:

@@ -23,7 +23,6 @@ export async function POST(req: Request) {
       (total: number, q: Question) => total + q.score!,
       0
     );
-    // Always create a new interview for a completed submission
     const interview = await prisma.interview.create({
       data: {
         candidateId: candidate.id,

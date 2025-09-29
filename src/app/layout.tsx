@@ -13,11 +13,13 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
-
 export const metadata: Metadata = {
   title: "Swipe AI-Interviews",
   description:
     "Practice interviews with live scoring and AI feedback. Get instant insights to improve your performance.",
+  icons: {
+    icon: "/image.png",
+  },
 };
 
 export default function RootLayout({

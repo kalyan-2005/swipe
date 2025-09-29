@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -11,9 +11,6 @@ import { CiLock } from "react-icons/ci";
 import {
   Clock,
   Send,
-  Pause,
-  Play,
-  RotateCcw,
   CheckCircle,
   Maximize2,
   Minimize2,
@@ -29,9 +26,7 @@ import {
   getInterviewState,
   saveInterviewState,
   getCandidateData,
-  saveCandidateData,
   type Question,
-  type InterviewState,
   type CandidateData,
 } from "@/lib/indexedDB";
 
@@ -41,7 +36,6 @@ export default function InterviewPage() {
   const [candidateData, setCandidateData] = useState<CandidateData | null>(
     null
   );
-  // Initialize questions as an array of placeholders
   const [questions, setQuestions] = useState<Question[]>(
     Array.from({ length: TOTAL_QUESTIONS }, (_, i) => ({
       id: `q_placeholder_${i}`,
@@ -52,7 +46,7 @@ export default function InterviewPage() {
   );
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [currentAnswer, setCurrentAnswer] = useState("");
-  const [timeLeft, setTimeLeft] = useState(20); // Initialized with a default, will be updated
+  const [timeLeft, setTimeLeft] = useState(20);
   const [isPaused, setIsPaused] = useState(false);
   const [isInterviewComplete, setIsInterviewComplete] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -70,11 +64,9 @@ export default function InterviewPage() {
       ? ((currentQuestionIndex + 1) / questions.length) * 100
       : 0;
 
-  // Initialize interview state
   useEffect(() => {
     const initializeInterview = async () => {
       try {
-        // Load candidate data from IndexedDB
         const candidate = await getCandidateData();
         if (!candidate) {
           router.push("/candidate");
@@ -82,11 +74,9 @@ export default function InterviewPage() {
         }
         setCandidateData(candidate);
 
-        // Load interview state from IndexedDB
         let state = await getInterviewState();
 
         if (!state) {
-          // Create new interview state with placeholder questions
           const initialQuestions: Question[] = Array.from(
             { length: TOTAL_QUESTIONS },
             (_, i) => ({
@@ -108,7 +98,6 @@ export default function InterviewPage() {
           };
           await saveInterviewState(state);
         } else {
-          // Ensure questions array always has TOTAL_QUESTIONS length
           if (state.questions.length < TOTAL_QUESTIONS) {
             for (let i = state.questions.length; i < TOTAL_QUESTIONS; i++) {
               state.questions.push({
@@ -122,13 +111,11 @@ export default function InterviewPage() {
           }
         }
 
-        // Load questions and current state
         setQuestions(state.questions);
         setCurrentQuestionIndex(state.currentIndex);
         setIsPaused(state.isPaused);
         setIsInterviewComplete(state.isComplete);
 
-        // Calculate time left
         const currentQ = state.questions[state.currentIndex];
         if (state.timerEndsAt > 0 && !state.isPaused && !state.isComplete) {
           const remaining = Math.max(
@@ -137,14 +124,12 @@ export default function InterviewPage() {
           );
           setTimeLeft(remaining);
         } else if (currentQ && currentQ.answer && state.timerEndsAt === 0) {
-          // If question is already answered, set timeLeft to its timeSpent
           setTimeLeft(
             getTimeLimitForDifficulty(currentQ.difficulty) -
               (currentQ.timeSpent || 0)
           );
           setShowNextButton(true);
         } else if (currentQ && !currentQ.answer && state.timerEndsAt === 0) {
-          // If question is not answered and timer wasn't started, set to full time
           setTimeLeft(getTimeLimitForDifficulty(currentQ.difficulty));
         } else if (
           state.timerEndsAt > 0 &&
@@ -160,21 +145,19 @@ export default function InterviewPage() {
                   score: 0,
                   feedback:
                     "Time up! No answer submitted. Automatically advanced.",
-                  timeSpent: getTimeLimitForDifficulty(currentQ.difficulty), // Full time spent
+                  timeSpent: getTimeLimitForDifficulty(currentQ.difficulty),
                   submittedAt: Date.now(),
                   rawSolution: "",
                 }
               : q
           );
           state.questions = updatedQuestions;
-          state.isPaused = true; // Stop timer for this question
+          state.isPaused = true;
           await saveInterviewState(state);
           setQuestions(updatedQuestions);
           setIsPaused(true);
           setShowNextButton(true);
-          // Do not immediately move to the next question here, as it will be handled by the next button click.
         }
-        // Generate the current question if it's a placeholder
         if (currentQ && currentQ.id.startsWith("q_placeholder")) {
           await generateQuestion(state.currentIndex);
         }
@@ -189,7 +172,6 @@ export default function InterviewPage() {
     initializeInterview();
   }, [router]);
 
-  // Generate a new question
   const generateQuestion = async (
     indexToUpdate: number = currentQuestionIndex
   ) => {
@@ -199,7 +181,7 @@ export default function InterviewPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           skills: candidateData?.skills || [],
-          difficulty: questions[indexToUpdate].difficulty, // Use difficulty from placeholder
+          difficulty: questions[indexToUpdate].difficulty,
         }),
       });
 
@@ -210,11 +192,10 @@ export default function InterviewPage() {
         id: `q_${Date.now()}`,
         question: questionData.question,
         difficulty: questionData.difficulty,
-        rawSolution: questionData.solution, // Store the solution as rawSolution
+        rawSolution: questionData.solution,
         timeSpent: 0,
       };
 
-      // Update state
       const state = await getInterviewState();
       if (state) {
         const updatedQuestions = state.questions.map((q, index) =>
@@ -224,7 +205,7 @@ export default function InterviewPage() {
         const timeLimit = getTimeLimitForDifficulty(newQuestion.difficulty);
         state.timerEndsAt = Date.now() + timeLimit * 1000;
         state.isPaused = false;
-        state.currentIndex = indexToUpdate; // Ensure current index is set correctly
+        state.currentIndex = indexToUpdate;
         await saveInterviewState(state);
 
         setQuestions([...state.questions]);
@@ -238,7 +219,6 @@ export default function InterviewPage() {
     }
   };
 
-  // Fullscreen functionality
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
@@ -281,7 +261,6 @@ export default function InterviewPage() {
     };
   }, [timeLeft, isPaused, isInterviewComplete, showNextButton]);
 
-  // Auto-submit when time runs out
   useEffect(() => {
     if (timeLeft === 0 && !isInterviewComplete && !showNextButton) {
       handleSubmitAnswer();
@@ -290,19 +269,18 @@ export default function InterviewPage() {
 
   const handleSubmitAnswer = async () => {
     if (!currentAnswer.trim() && timeLeft === 0) {
-      // Fetch solution from new API endpoint
       try {
         const updatedQuestions = questions.map((q, index) =>
           index === currentQuestionIndex
             ? {
                 ...q,
-                answer: "", // Set the fetched solution as the answer
-                score: 0, // Score is 0
+                answer: "",
+                score: 0,
                 feedback:
                   "Time up! No answer submitted. Solution automatically provided.",
                 timeSpent:
                   getTimeLimitForDifficulty(currentQuestion.difficulty) -
-                  timeLeft, // Full time spent
+                  timeLeft,
                 submittedAt: Date.now(),
                 rawSolution: "",
               }
@@ -312,7 +290,7 @@ export default function InterviewPage() {
         const state = await getInterviewState();
         if (state) {
           state.questions = updatedQuestions;
-          state.isPaused = true; // Stop timer
+          state.isPaused = true;
           await saveInterviewState(state);
         }
         setQuestions(updatedQuestions);
@@ -320,7 +298,6 @@ export default function InterviewPage() {
         setShowNextButton(true);
       } catch (error) {
         console.error("Error fetching solution on time up:", error);
-        // Proceed without solution if fetching fails
         const updatedQuestions = questions.map((q, index) =>
           index === currentQuestionIndex
             ? {
@@ -354,7 +331,6 @@ export default function InterviewPage() {
     setIsSubmitting(true);
 
     try {
-      // Get AI evaluation
       const response = await fetch("/api/evaluate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -370,7 +346,6 @@ export default function InterviewPage() {
       const timeSpent =
         getTimeLimitForDifficulty(currentQuestion.difficulty) - timeLeft;
 
-      // Update question with answer and evaluation
       const updatedQuestions = questions.map((q, index) =>
         index === currentQuestionIndex
           ? {
@@ -384,11 +359,10 @@ export default function InterviewPage() {
           : q
       );
 
-      // Update state in IndexedDB
       const state = await getInterviewState();
       if (state) {
         state.questions = updatedQuestions;
-        state.isPaused = true; // Stop timer
+        state.isPaused = true;
         await saveInterviewState(state);
       }
 
@@ -408,7 +382,6 @@ export default function InterviewPage() {
       const nextIndex = prevIndex + 1;
 
       if (nextIndex >= TOTAL_QUESTIONS) {
-        // Interview complete
         const completeInterview = async () => {
           const state = await getInterviewState();
           if (state) {
@@ -427,19 +400,17 @@ export default function InterviewPage() {
           })
         };
         completeInterview();
-        return prevIndex; // Stay on the last question until interview completion UI is shown
+        return prevIndex;
       }
 
       const processNextQuestion = async () => {
         const state = await getInterviewState();
         if (!state) return;
 
-        // Generate next question if it's a placeholder
         const nextQuestion = state.questions[nextIndex];
         if (nextQuestion && nextQuestion.id.startsWith("q_placeholder")) {
-          await generateQuestion(nextIndex); // This function will update state in IndexedDB and component state
+          await generateQuestion(nextIndex);
         } else {
-          // If not a placeholder, just update state for next question
           state.currentIndex = nextIndex;
           const timeLimit = getTimeLimitForDifficulty(
             state.questions[nextIndex].difficulty
@@ -448,7 +419,7 @@ export default function InterviewPage() {
           state.isPaused = false;
           await saveInterviewState(state);
 
-          setQuestions([...state.questions]); // Update questions state from IndexedDB
+          setQuestions([...state.questions]);
           setTimeLeft(timeLimit);
           setIsPaused(false);
           setCurrentAnswer("");
@@ -459,21 +430,6 @@ export default function InterviewPage() {
 
       return nextIndex;
     });
-  };
-
-  const handlePauseResume = async () => {
-    const newPausedState = !isPaused;
-    setIsPaused(newPausedState);
-
-    // Update state in IndexedDB
-    const state = await getInterviewState();
-    if (state) {
-      state.isPaused = newPausedState;
-      if (!newPausedState && state.timerEndsAt === 0) {
-        state.timerEndsAt = Date.now() + timeLeft * 1000;
-      }
-      await saveInterviewState(state);
-    }
   };
 
   const getTimerColor = () => {
@@ -506,7 +462,7 @@ export default function InterviewPage() {
       case "HARD":
         return 120;
       default:
-        return 20; // Default to easy
+        return 20;
     }
   };
 
@@ -533,7 +489,6 @@ export default function InterviewPage() {
     );
   }
 
-  // Fullscreen prompt
   if (showFullscreenPrompt && !isFullscreen) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -778,18 +733,6 @@ export default function InterviewPage() {
                   {timeLeft}
                 </span>
               </div>
-              {/* <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePauseResume}
-                disabled={isSubmitting}
-              >
-                {isPaused ? (
-                  <Play className="h-4 w-4" />
-                ) : (
-                  <Pause className="h-4 w-4" />
-                )}
-              </Button> */}
               <Button
                 variant="outline"
                 className="hover:bg-gray-100"

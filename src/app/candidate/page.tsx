@@ -16,24 +16,13 @@ import {
 } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { useRouter } from "next/navigation";
-import { saveCandidateData, clearAllData } from "@/lib/indexedDB";
+import { saveCandidateData } from "@/lib/indexedDB";
 
 interface ResumeData {
   name: string;
   email: string;
   phone: string;
   skills: string[];
-}
-
-interface ExtractedData {
-  name: string;
-  email: string;
-  phone: string;
-  found: {
-    name: boolean;
-    email: boolean;
-    phone: boolean;
-  };
 }
 
 interface ChatMessage {
@@ -329,7 +318,7 @@ export default function CandidatePage() {
                         }`}
                       >
                         {message.isTyping ? (
-                          <div className="flex items-start gap-2 items-center">
+                          <div className="flex gap-2 items-center">
                             <Loader2 className="h-4 w-4 animate-spin" />
                             <span>AI is typing...</span>
                           </div>

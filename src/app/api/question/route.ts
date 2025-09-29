@@ -11,7 +11,7 @@ export async function POST(req: Request) {
 
     const skillsText = skills
       ? `focused on: ${skills.join(", ")}`
-      : "general frontend development";
+      : "general full-stack development";
     const difficultyText = difficulty
       ? `with ${difficulty} difficulty`
       : "with varying difficulty levels";
@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     const prompt = `
       Generate ${count} technical interview question${
       count > 1 ? "s" : ""
-    } for a frontend developer ${skillsText} ${difficultyText}.
+    } for on ${skillsText} ${difficultyText}.
       
       For each question, provide a JSON response in this exact format:
       {
@@ -37,6 +37,7 @@ export async function POST(req: Request) {
       Make sure the questions are practical, relevant, and test real-world full-stack (React/Node.js) development skills.
       Include questions about React, Node.js, JavaScript, CSS, HTML, state management, performance, testing, and modern web development practices.
       Ensure questions can be answered within the specified time limits: Easy (20s), Medium (60s), Hard (120s).
+      Questions with maximum 5-6 lines of text.
     `;
 
     const result = await model.generateContent(prompt);

@@ -11,7 +11,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -23,12 +22,7 @@ import {
 import {
   Users,
   Search,
-  Filter,
   Eye,
-  TrendingUp,
-  Clock,
-  CheckCircle,
-  AlertCircle,
   ArrowLeft,
   Download,
   RefreshCw,
@@ -40,9 +34,6 @@ export default function InterviewerDashboard() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [filteredCandidates, setFilteredCandidates] = useState<Candidate[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<
-    "all" | "completed" | "in-progress" | "not-started"
-  >("all");
   const [scoreFilter, setScoreFilter] = useState<
     "all" | "high" | "medium" | "low"
   >("all");
@@ -131,6 +122,10 @@ export default function InterviewerDashboard() {
             aValue = new Date(a.createdAt).getTime();
             bValue = new Date(b.createdAt).getTime();
             break;
+          case "timeSpent":
+            aValue = a.questions.length>0 ? a.questions.reduce((sum, question) => sum + question.timeSpent, 0) : 0
+            bValue = b.questions.length>0 ? b.questions.reduce((sum, question) => sum + question.timeSpent, 0) : 0
+            break;
           default:
             return 0;
         }
@@ -146,7 +141,7 @@ export default function InterviewerDashboard() {
     }
 
     setFilteredCandidates(filtered);
-  }, [candidates, searchTerm, statusFilter, scoreFilter, sortConfig]);
+  }, [candidates, searchTerm, scoreFilter, sortConfig]);
 
   const handleRefresh = async () => {
     setIsLoading(true);
@@ -174,7 +169,6 @@ export default function InterviewerDashboard() {
     setSortConfig({ key, direction });
   };
 
-  // return JSON.stringify(filteredCandidates, null, 2);
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       {/* Navigation */}
@@ -285,14 +279,23 @@ export default function InterviewerDashboard() {
                           </span>
                         )}
                       </TableHead>
-                      {/* <TableHead>Skills</TableHead> */}
-                      {/* <TableHead>Interviews</TableHead> */}
                       <TableHead
                         className="cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
                         onClick={() => handleSort("averageScore")}
                       >
                         Average Score
                         {sortConfig?.key === "averageScore" && (
+                          <span>
+                            {sortConfig.direction === "ascending" ? " ↑" : " ↓"}
+                          </span>
+                        )}
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
+                        onClick={() => handleSort("timeSpent")}
+                      >
+                        Time Spent
+                        {sortConfig?.key === "timeSpent" && (
                           <span>
                             {sortConfig.direction === "ascending" ? " ↑" : " ↓"}
                           </span>
@@ -309,7 +312,6 @@ export default function InterviewerDashboard() {
                           </span>
                         )}
                       </TableHead>
-                      {/* <TableHead>Status</TableHead> */}
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -323,26 +325,6 @@ export default function InterviewerDashboard() {
                           {candidate.candidate.name}
                         </TableCell>
                         <TableCell>{candidate.candidate.email}</TableCell>
-                        {/* <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {candidate.candidate.skills.length > 0 ? candidate.candidate.skills
-                              .slice(0, 2)
-                              .map((skill, index) => (
-                                <Badge
-                                  key={index}
-                                  variant="outline"
-                                  className="text-xs"
-                                >
-                                  {skill}
-                                </Badge>
-                              )) : null}
-                            {candidate.skills.length > 2 ? (
-                              <Badge variant="outline" className="text-xs">
-                                +{candidate.skills.length - 2}
-                              </Badge>
-                            ) : null}
-                          </div>
-                        </TableCell> */}
                         <TableCell>
                           <span
                             className={getScoreColor(
@@ -356,14 +338,21 @@ export default function InterviewerDashboard() {
                           >
                             {candidate.questions.length > 0
                               ? `${Math.round(
-                                  (candidate.questions.reduce(
+                                  candidate.questions.reduce(
                                     (sum, question) => sum + question.score,
                                     0
-                                  ))
-                                  /candidate.questions.length
+                                  ) / candidate.questions.length
                                 )}%`
                               : "N/A"}
                           </span>
+                        </TableCell>
+                        <TableCell>
+                          {candidate.questions.length > 0
+                            ? candidate.questions.reduce(
+                                (sum, question) => sum + question.timeSpent,
+                                0
+                              )
+                            : "N/A"}
                         </TableCell>
                         <TableCell>
                           {candidate.createdAt
