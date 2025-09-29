@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { useRouter } from "next/navigation";
+import { saveCandidateData, clearAllData } from "@/lib/indexedDB";
 
 interface ResumeData {
   name: string;
@@ -145,52 +146,51 @@ export default function CandidatePage() {
           throw new Error(errorData.error || "Failed to extract");
         }
 
-const data = await res.json();
+        const data = await res.json();
 
-// defensive: ensure found object exists
-const found = data.found ?? {
-  name: !!(data.name && data.name !== "Not found"),
-  email: !!(data.email && data.email !== "Not found"),
-  phone: !!(data.phone && data.phone !== "Not found"),
-};
+        // defensive: ensure found object exists
+        const found = data.found ?? {
+          name: !!(data.name && data.name !== "Not found"),
+          email: !!(data.email && data.email !== "Not found"),
+          phone: !!(data.phone && data.phone !== "Not found"),
+        };
 
-// Check if we found any information
-const foundAny = found.name || found.email || found.phone;
-
+        // Check if we found any information
+        const foundAny = found.name || found.email || found.phone;
 
         if (foundAny) {
-  setResumeData({
-    name: data.name ?? "Not found",
-    email: data.email ?? "Not found",
-    phone: data.phone ?? "Not found",
-    skills: [],
-  });
-  setManualData({
-    name: data.name ?? "",
-    email: data.email ?? "",
-    phone: data.phone ?? "",
-  });
+          setResumeData({
+            name: data.name ?? "Not found",
+            email: data.email ?? "Not found",
+            phone: data.phone ?? "Not found",
+            skills: [],
+          });
+          setManualData({
+            name: data.name ?? "",
+            email: data.email ?? "",
+            phone: data.phone ?? "",
+          });
 
-  // Build confirmation message
-  let confirmationMessage = "Great! I found some information from your resume:\n\n";
+          // Build confirmation message
+          let confirmationMessage =
+            "Great! I found some information from your resume:\n\n";
 
-  if (found.name) confirmationMessage += `• Name: ${data.name}\n`;
-  if (found.email) confirmationMessage += `• Email: ${data.email}\n`;
-  if (found.phone) confirmationMessage += `• Phone: ${data.phone}\n`;
+          if (found.name) confirmationMessage += `• Name: ${data.name}\n`;
+          if (found.email) confirmationMessage += `• Email: ${data.email}\n`;
+          if (found.phone) confirmationMessage += `• Phone: ${data.phone}\n`;
 
-  confirmationMessage += "\nIs this information correct?";
+          confirmationMessage += "\nIs this information correct?";
 
-  simulateBotResponse(confirmationMessage, 2000);
-  setShowConfirmation(true);
-  setCurrentStep("verify");
-} else {
-  simulateBotResponse(
-    "I couldn&apos;t find your name, email, or phone number in the resume. Could you please provide your details manually?",
-    2000
-  );
-  setCurrentStep("verify");
-}
-
+          simulateBotResponse(confirmationMessage, 2000);
+          setShowConfirmation(true);
+          setCurrentStep("verify");
+        } else {
+          simulateBotResponse(
+            "I couldn&apos;t find your name, email, or phone number in the resume. Could you please provide your details manually?",
+            2000
+          );
+          setCurrentStep("verify");
+        }
       } catch (error) {
         console.error(error);
         simulateBotResponse(
@@ -233,12 +233,14 @@ const foundAny = found.name || found.email || found.phone;
       1500
     );
 
-    setTimeout(() => {
+    setTimeout(async () => {
       const candidateData = {
+        id: `candidate_${Date.now()}`,
         ...manualData,
         skills: resumeData?.skills || [],
+        createdAt: Date.now(),
       };
-      localStorage.setItem("candidateData", JSON.stringify(candidateData));
+      await saveCandidateData(candidateData);
       router.push("/candidate/lobby");
     }, 3000);
   };
@@ -251,12 +253,14 @@ const foundAny = found.name || found.email || found.phone;
       1500
     );
 
-    setTimeout(() => {
+    setTimeout(async () => {
       const candidateData = {
+        id: `candidate_${Date.now()}`,
         ...manualData,
         skills: resumeData?.skills || [],
+        createdAt: Date.now(),
       };
-      localStorage.setItem("candidateData", JSON.stringify(candidateData));
+      await saveCandidateData(candidateData);
       router.push("/candidate/lobby");
     }, 3000);
   };
