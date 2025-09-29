@@ -153,7 +153,7 @@ export default function ResultsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto sm:px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
@@ -323,9 +323,9 @@ export default function ResultsPage() {
             <CardTitle>Question Analysis</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-6">
+            <div className="sm:space-y-6">
               {questions.map((question, index) => (
-                <div key={question.id} className="border rounded-lg p-4">
+                <div key={question.id} className="sm:border rounded-lg sm:p-4">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900 dark:text-white mb-2">

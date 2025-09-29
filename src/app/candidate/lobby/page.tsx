@@ -43,7 +43,7 @@ export default function LobbyPage() {
             <div className="flex items-center space-x-2">
               {" "}
               <Target className="h-8 w-8 text-blue-600" />{" "}
-              <span className="text-2xl font-bold text-gray-900 dark:text-white">
+              <span className="sm:text-2xl font-bold text-gray-900 dark:text-white">
                 {" "}
                 Swipe Interviews{" "}
               </span>{" "}
@@ -59,7 +59,7 @@ export default function LobbyPage() {
           </div>{" "}
         </div>{" "}
       </nav>
-      <div className="flex flex-1 items-center justify-center p-6">
+      <div className="flex flex-1 items-center justify-center sm:p-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -68,7 +68,7 @@ export default function LobbyPage() {
         >
           <Card className="">
             <CardHeader className="flex justify-between items-center">
-              <CardTitle className="text-2xl font-bold text-blue-600">
+              <CardTitle className="sm:text-2xl font-bold text-blue-600">
                 Full Stack Developer Interview Test
               </CardTitle>
               <Button
@@ -83,7 +83,7 @@ export default function LobbyPage() {
               {/* Instructions */}
               <section>
                 <h2 className="text-xl font-semibold mb-4">Instructions</h2>
-                <ol className="list-decimal list-inside text-gray-800 space-y-2">
+                <ol className="list-decimal list-inside text-gray-800 sm:space-y-2">
                   <li>
                     This is a timed interview. Once started, the timer cannot be
                     paused or restarted.
@@ -111,7 +111,7 @@ export default function LobbyPage() {
                   <table className="w-full text-left border rounded-xl">
                     <thead className="bg-blue-500 text-white rounded-xl">
                       <tr className="rounded-t-xl">
-                        <th className="py-2 px-4">No.</th>
+                        <th className="py-2 px-4 max-sm:hidden">No.</th>
                         <th className="py-2 px-4">Section</th>
                         <th className="py-2 px-4">Questions</th>
                         <th className="py-2 px-4">Timer (Each)</th>
@@ -119,19 +119,19 @@ export default function LobbyPage() {
                     </thead>
                     <tbody className="">
                       <tr className="">
-                        <td className="py-2 px-4">1</td>
+                        <td className="py-2 px-4 max-sm:hidden">1</td>
                         <td className="py-2 px-4">Easy</td>
                         <td className="py-2 px-4">2</td>
                         <td className="py-2 px-4">20s</td>
                       </tr>
                       <tr className="">
-                        <td className="py-2 px-4">2</td>
+                        <td className="py-2 px-4 max-sm:hidden">2</td>
                         <td className="py-2 px-4">Medium</td>
                         <td className="py-2 px-4">2</td>
                         <td className="py-2 px-4">60s</td>
                       </tr>
                       <tr>
-                        <td className="py-2 px-4">3</td>
+                        <td className="py-2 px-4 max-sm:hidden">3</td>
                         <td className="py-2 px-4">Hard</td>
                         <td className="py-2 px-4">2</td>
                         <td className="py-2 px-4">120s</td>
@@ -142,20 +142,20 @@ export default function LobbyPage() {
               </section>
 
               {/* Candidate quick note */}
-              <div className="flex justify-between items-center">
-                <p className="text-sm">
+              <div className="flex justify-between items-center max-sm:text-xs max-sm:flex-col">
+                <p className="sm:text-sm">
                   Candidate:{" "}
                   <span className="font-medium">{candidate.name}</span> —{" "}
                   {candidate.email}
                 </p>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 max-sm:mt-2">
                   <h1 className="text-gray-600">Powered By</h1>
                   <Image
                     src="/logo.svg"
                     alt="Logo"
                     width={80}
                     height={80}
-                    className="mx-auto"
+                    className="mx-auto max-sm:w-10"
                   />
                 </div>
               </div>

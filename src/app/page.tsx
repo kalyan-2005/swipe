@@ -19,18 +19,18 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       {/* Navigation */}
       <nav className="border-b bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto p-4 max-sm:p-2">
           <div className="flex items-center justify-between">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               className="flex items-center space-x-2"
             >
-              <Image src="/logo.svg" alt="Logo" width={100} height={100} />
+              <Image src="/logo.svg" alt="Logo" width={100} height={100} className="max-sm:w-20" />
             </motion.div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4 max-sm:space-x-2">
               <ThemeToggle />
-              <Button variant="secondary" asChild>
+              <Button variant="secondary" asChild  className="max-sm:hidden">
                 <Link href="/interviewer">Interviewer Dashboard</Link>
               </Button>
               <Button asChild>
@@ -42,8 +42,8 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-20 flex justify-between items-center">
-        <div className="max-w-4xl mx-auto">
+      <section className="container mx-auto px-4 py-20 flex justify-between items-center max-md:flex-wrap-reverse">
+        <div className="max-w-4xl mx-auto max-md:mt-2">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -64,8 +64,8 @@ export default function Home() {
               <br />
               Get instant insights to improve your performance.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Button size="lg" className="text-lg px-8 py-6" asChild>
+            <div className="flex gap-4 max-sm:justify-center">
+              <Button size="lg" className="text-lg px-8 py-6 max-sm:p-2 max-sm:text-xs" asChild>
                 <Link href="/candidate">
                   Get Started
                   <ArrowRight className="ml-2 h-5 w-5" />
@@ -74,7 +74,7 @@ export default function Home() {
               <Button
                 size="lg"
                 variant="outline"
-                className="text-lg px-8 py-6 hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="text-lg px-8 py-6 max-sm:p-2 max-sm:text-xs hover:bg-gray-100 dark:hover:bg-gray-800"
                 asChild
               >
                 <Link href="/interviewer">Interviewer Login</Link>
@@ -224,22 +224,22 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
-          className="text-center bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-900 p-10 rounded-lg shadow-xl border border-blue-100 dark:border-gray-700"
+          className="text-center bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-900 p-10 max-sm:p-4 rounded-lg shadow-xl border border-blue-100 dark:border-gray-700"
         >
-          <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+          <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4 max-sm:text-2xl">
             Ready to Transform Your Interview Preparation?
           </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
+          <p className="sm:text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
             Join a thriving community of job seekers who are mastering their
             interviews with our AI-powered guidance.
           </p>
           <Button
             size="lg"
-            className="text-xl px-10 py-7 bg-blue-600 hover:bg-blue-700 text-white shadow-lg transform hover:scale-105 transition-all duration-300"
+            className="sm:text-xl px-10 py-7 bg-blue-600 hover:bg-blue-700 text-white shadow-lg transform hover:scale-105 transition-all duration-300"
             asChild
           >
             <Link href="/candidate">
-              Start Your Free Practice Interview
+              Start Your Interview Now
               <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
           </Button>

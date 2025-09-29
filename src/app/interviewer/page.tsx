@@ -177,7 +177,7 @@ export default function InterviewerDashboard() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Users className="h-8 w-8 text-blue-600" />
-              <span className="text-2xl font-bold text-gray-900 dark:text-white">
+              <span className="text-2xl max-sm:text-sm font-bold text-gray-900 dark:text-white">
                 Interviewer Dashboard
               </span>
             </div>
@@ -192,7 +192,7 @@ export default function InterviewerDashboard() {
               </Button>
               <Button
                 variant="outline"
-                className="hover:bg-gray-100"
+                className="hover:bg-gray-100 max-sm:hidden"
                 onClick={handleRefresh}
                 disabled={isLoading}
               >
@@ -206,7 +206,7 @@ export default function InterviewerDashboard() {
         </div>
       </nav>
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 max-sm:p-2">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -215,20 +215,20 @@ export default function InterviewerDashboard() {
         >
           {/* Filters */}
           <Card className="mb-8">
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row gap-4">
+            <CardContent className="sm:p-6">
+              <div className="flex gap-4">
                 <div className="flex-1">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <Input
-                      placeholder="Search candidates by name or email..."
+                      placeholder={`Search candidates by name or email...`}
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-10"
                     />
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 max-sm:text-xs">
                   <select
                     value={scoreFilter}
                     onChange={(e) => setScoreFilter(e.target.value as any)}
@@ -253,7 +253,7 @@ export default function InterviewerDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto max-sm:text-xs">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -319,7 +319,7 @@ export default function InterviewerDashboard() {
                     {filteredCandidates.map((candidate) => (
                       <TableRow
                         key={candidate.id}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-800"
+                        className="hover:bg-gray-50 dark:hover:bg-gray-800 max-sm:text-xs"
                       >
                         <TableCell className="font-medium">
                           {candidate.candidate.name}

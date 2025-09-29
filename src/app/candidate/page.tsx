@@ -257,7 +257,7 @@ export default function CandidatePage() {
   };
 
   const handleRejectInfo = () => {
-    addMessage("No, that&apos;s not correct", "user");
+    addMessage("No, that's not correct", "user");
     setShowConfirmation(false);
     simulateBotResponse(
       "No problem! Please correct the information below and I'll use the updated details.",
@@ -267,15 +267,15 @@ export default function CandidatePage() {
   };
 
   return (
-    <div className="h-screen bg-white">
+    <div className="min-h-screen bg-white">
       {/* Navigation */}
       <nav className="bg-white/80 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Bot className="h-8 w-8 text-blue-600" />
-              <span className="text-2xl font-bold text-gray-900">
-                AI Interview Assistant
+              <span className="sm:text-2xl font-bold text-gray-900">
+                AI <span className="max-sm:hidden">Interview</span> Assistant
               </span>
             </div>
             <Button variant="outline" className="hover:bg-gray-100 cursor-pointer" onClick={() => router.push("/")}>
@@ -293,7 +293,7 @@ export default function CandidatePage() {
           className="max-w-4xl mx-auto"
         >
           {/* Chat Interface */}
-          <Card className="h-[600px] flex flex-col overflow-y-auto">
+          <Card className="min-h-[600px] flex flex-col overflow-y-auto">
             <CardContent className="flex-1 flex flex-col p-0">
               {/* Messages Area */}
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -311,7 +311,7 @@ export default function CandidatePage() {
                       }`}
                     >
                       <div
-                        className={`max-w-[80%] rounded-xl p-4 ${
+                        className={`max-w-[80%] rounded-xl p-4 max-sm:text-xs max-sm:p-2 ${
                           message.type === "user"
                             ? "bg-blue-600 text-white"
                             : "border-blue-400 border-2"
@@ -335,7 +335,7 @@ export default function CandidatePage() {
 
               {/* Upload Area */}
               {currentStep === "welcome" && (
-                <div className="border-t p-6">
+                <div className="border-t p-6 max-sm:text-xs">
                   <div
                     {...getRootProps()}
                     className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
@@ -375,7 +375,7 @@ export default function CandidatePage() {
                   <div className="flex gap-2">
                     <Button onClick={handleConfirmInfo} className="flex-1">
                       <CheckCircle className="h-4 w-4 mr-2" />
-                      Yes, that&apos;s correct
+                      Yes<span className="max-sm:hidden">, that&apos;s correct</span>
                     </Button>
                     <Button
                       onClick={handleRejectInfo}
@@ -383,7 +383,7 @@ export default function CandidatePage() {
                       className="flex-1 hover:bg-gray-100"
                     >
                       <AlertCircle className="h-4 w-4 mr-2" />
-                      No, that&apos;s not correct
+                      No<span className="max-sm:hidden">, that&apos;s not correct</span>
                     </Button>
                   </div>
                 </div>

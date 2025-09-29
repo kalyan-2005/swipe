@@ -170,7 +170,7 @@ export default function CandidateDetailPage({
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <FileText className="h-8 w-8 text-blue-600" />
-              <span className="text-2xl font-bold text-gray-900 dark:text-white">
+              <span className="text-2xl max-sm:text-sm font-bold text-gray-900 dark:text-white">
                 Candidate Details
               </span>
             </div>
@@ -178,7 +178,7 @@ export default function CandidateDetailPage({
               <Button
                 variant="outline"
                 onClick={() => router.push("/interviewer")}
-                className="hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="hover:bg-gray-100 dark:hover:bg-gray-800 max-sm:hidden"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Dashboard
@@ -207,7 +207,7 @@ export default function CandidateDetailPage({
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
               {candidate.name}
             </h1>
-            <div className="flex items-center gap-4 text-gray-600 dark:text-gray-300">
+            <div className="flex max-sm:flex-wrap max-sm:text-xs items-center gap-4 text-gray-600 dark:text-gray-300">
               <div className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
                 {candidate.email}
@@ -358,17 +358,17 @@ export default function CandidateDetailPage({
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
+              <div className="sm:space-y-6">
                 {candidate.questions.map((question, index) => (
                   <motion.div
                     key={question.id}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
-                    className="border border-gray-200 dark:border-gray-700 rounded-lg p-6"
+                    className="sm:border border-gray-200 dark:border-gray-700 rounded-lg sm:p-6"
                   >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
+                    <div className="flex flex-col mb-4">
+                      <div className="flex justify-between items-end">
                         <div className="flex items-center gap-3 mb-2">
                           <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
                             Question {index + 1}
@@ -383,22 +383,22 @@ export default function CandidateDetailPage({
                             {question.timeSpent}s
                           </div>
                         </div>
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                          {question.question}
-                        </h3>
-                      </div>
-                      <div className="text-right">
-                        <div
-                          className={`text-2xl font-bold ${getScoreColor(
-                            question.score
-                          )}`}
-                        >
-                          {question.score}%
-                        </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          Score
+                        <div className="text-right">
+                          <div
+                            className={`sm:text-2xl font-bold ${getScoreColor(
+                              question.score
+                            )}`}
+                          >
+                            {question.score}%
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            Score
+                          </div>
                         </div>
                       </div>
+                      <h3 className="max-sm:text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                        {question.question}
+                      </h3>
                     </div>
 
                     <div className="space-y-4">
