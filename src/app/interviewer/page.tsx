@@ -28,11 +28,18 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Candidate } from "@prisma/client";
+import { Candidate, Interview, Question } from "@prisma/client";
+
+interface PopulatedInterview extends Interview {
+  candidate: Candidate;
+  questions: Question[];
+}
 
 export default function InterviewerDashboard() {
-  const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [filteredCandidates, setFilteredCandidates] = useState<Candidate[]>([]);
+  const [candidates, setCandidates] = useState<PopulatedInterview[]>([]);
+  const [filteredCandidates, setFilteredCandidates] = useState<
+    PopulatedInterview[]
+  >([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [scoreFilter, setScoreFilter] = useState<
     "all" | "high" | "medium" | "low"
@@ -60,24 +67,25 @@ export default function InterviewerDashboard() {
     // Search filter
     if (searchTerm) {
       filtered = filtered.filter(
-        (candidate) =>
-          candidate.candidate.name
+        (interview) =>
+          interview.candidate.name
             .toLowerCase()
             .includes(searchTerm.toLowerCase()) ||
-          candidate.candidate.email
+          interview.candidate.email
             .toLowerCase()
             .includes(searchTerm.toLowerCase())
       );
     }
     // Score filter
     if (scoreFilter !== "all") {
-      filtered = filtered.filter((candidate) => {
+      filtered = filtered.filter((interview) => {
         const averageScore =
-          candidate.questions.length > 0
-            ? candidate.questions.reduce(
-                (sum, question) => sum + question.score,
+          interview.questions.length > 0
+            ? interview.questions.reduce(
+                (sum: number, question: Question) =>
+                  sum + (question.score || 0),
                 0
-              ) / candidate.questions.length
+              ) / interview.questions.length
             : 0;
         if (scoreFilter === "high") return averageScore >= 80;
         if (scoreFilter === "medium")
@@ -106,14 +114,16 @@ export default function InterviewerDashboard() {
             aValue =
               a.questions.length > 0
                 ? a.questions.reduce(
-                    (sum, question) => sum + question.score,
+                    (sum: number, question: Question) =>
+                      sum + (question.score || 0),
                     0
                   ) / a.questions.length
                 : 0;
             bValue =
               b.questions.length > 0
                 ? b.questions.reduce(
-                    (sum, question) => sum + question.score,
+                    (sum: number, question: Question) =>
+                      sum + (question.score || 0),
                     0
                   ) / b.questions.length
                 : 0;
@@ -123,8 +133,22 @@ export default function InterviewerDashboard() {
             bValue = new Date(b.createdAt).getTime();
             break;
           case "timeSpent":
-            aValue = a.questions.length>0 ? a.questions.reduce((sum, question) => sum + question.timeSpent, 0) : 0
-            bValue = b.questions.length>0 ? b.questions.reduce((sum, question) => sum + question.timeSpent, 0) : 0
+            aValue =
+              a.questions.length > 0
+                ? a.questions.reduce(
+                    (sum: number, question: Question) =>
+                      sum + (question.timeSpent || 0),
+                    0
+                  )
+                : 0;
+            bValue =
+              b.questions.length > 0
+                ? b.questions.reduce(
+                    (sum: number, question: Question) =>
+                      sum + (question.timeSpent || 0),
+                    0
+                  )
+                : 0;
             break;
           default:
             return 0;
@@ -316,47 +340,50 @@ export default function InterviewerDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredCandidates.map((candidate) => (
+                    {filteredCandidates.map((interview) => (
                       <TableRow
-                        key={candidate.id}
+                        key={interview.id}
                         className="hover:bg-gray-50 dark:hover:bg-gray-800 max-sm:text-xs"
                       >
                         <TableCell className="font-medium">
-                          {candidate.candidate.name}
+                          {interview.candidate.name}
                         </TableCell>
-                        <TableCell>{candidate.candidate.email}</TableCell>
+                        <TableCell>{interview.candidate.email}</TableCell>
                         <TableCell>
                           <span
                             className={getScoreColor(
-                              candidate.questions.length > 0
-                                ? candidate.questions.reduce(
-                                    (sum, question) => sum + question.score,
+                              interview.questions.length > 0
+                                ? interview.questions.reduce(
+                                    (sum: number, question: Question) =>
+                                      sum + (question.score || 0),
                                     0
-                                  ) / candidate.questions.length
+                                  ) / interview.questions.length
                                 : 0
                             )}
                           >
-                            {candidate.questions.length > 0
+                            {interview.questions.length > 0
                               ? `${Math.round(
-                                  candidate.questions.reduce(
-                                    (sum, question) => sum + question.score,
+                                  interview.questions.reduce(
+                                    (sum: number, question: Question) =>
+                                      sum + (question.score || 0),
                                     0
-                                  ) / candidate.questions.length
+                                  ) / interview.questions.length
                                 )}%`
                               : "N/A"}
                           </span>
                         </TableCell>
                         <TableCell>
-                          {candidate.questions.length > 0
-                            ? candidate.questions.reduce(
-                                (sum, question) => sum + question.timeSpent,
+                          {interview.questions.length > 0
+                            ? interview.questions.reduce(
+                                (sum: number, question: Question) =>
+                                  sum + (question.timeSpent || 0),
                                 0
                               )
                             : "N/A"}
                         </TableCell>
                         <TableCell>
-                          {candidate.createdAt
-                            ? new Date(candidate.createdAt).toLocaleDateString()
+                          {interview.createdAt
+                            ? new Date(interview.createdAt).toLocaleDateString()
                             : "N/A"}
                         </TableCell>
                         <TableCell>
@@ -366,7 +393,7 @@ export default function InterviewerDashboard() {
                               variant="outline"
                               onClick={() =>
                                 router.push(
-                                  `/interviewer/candidate/${candidate.id}`
+                                  `/interviewer/candidate/${interview.id}`
                                 )
                               }
                               className="hover:bg-gray-100"

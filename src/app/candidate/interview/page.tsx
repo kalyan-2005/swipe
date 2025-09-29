@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -64,210 +64,81 @@ export default function InterviewPage() {
       ? ((currentQuestionIndex + 1) / questions.length) * 100
       : 0;
 
-  useEffect(() => {
-    const initializeInterview = async () => {
+  const getTimeLimitForDifficulty = useCallback(
+    (difficulty: "EASY" | "MEDIUM" | "HARD"): number => {
+      switch (difficulty) {
+        case "EASY":
+          return 20;
+        case "MEDIUM":
+          return 60;
+        case "HARD":
+          return 120;
+        default:
+          return 20;
+      }
+    },
+    []
+  );
+
+  const generateQuestion = useCallback(
+    async (indexToUpdate: number = currentQuestionIndex) => {
       try {
-        const candidate = await getCandidateData();
-        if (!candidate) {
-          router.push("/candidate");
-          return;
-        }
-        setCandidateData(candidate);
+        const response = await fetch("/api/question", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            skills: candidateData?.skills || [],
+            difficulty: questions[indexToUpdate].difficulty,
+          }),
+        });
 
-        let state = await getInterviewState();
+        if (!response.ok) throw new Error("Failed to generate question");
 
-        if (!state) {
-          const initialQuestions: Question[] = Array.from(
-            { length: TOTAL_QUESTIONS },
-            (_, i) => ({
-              id: `q_placeholder_${i}`,
-              question: `Question ${i + 1}`,
-              difficulty: i < 2 ? "EASY" : i < 4 ? "MEDIUM" : "HARD",
-              timeSpent: 0,
-            })
-          );
-          state = {
-            id: `interview_${Date.now()}`,
-            questions: initialQuestions,
-            currentIndex: 0,
-            timerEndsAt: 0,
-            isPaused: false,
-            isComplete: false,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-          };
-          await saveInterviewState(state);
-        } else {
-          if (state.questions.length < TOTAL_QUESTIONS) {
-            for (let i = state.questions.length; i < TOTAL_QUESTIONS; i++) {
-              state.questions.push({
-                id: `q_placeholder_${i}`,
-                question: `Question ${i + 1}`,
-                difficulty: i < 2 ? "EASY" : i < 4 ? "MEDIUM" : "HARD",
-                timeSpent: 0,
-              });
-            }
-            await saveInterviewState(state);
-          }
-        }
+        const questionData = await response.json();
+        const newQuestion: Question = {
+          id: `q_${Date.now()}`,
+          question: questionData.question,
+          difficulty: questionData.difficulty,
+          rawSolution: questionData.solution,
+          timeSpent: 0,
+        };
 
-        setQuestions(state.questions);
-        setCurrentQuestionIndex(state.currentIndex);
-        setIsPaused(state.isPaused);
-        setIsInterviewComplete(state.isComplete);
-
-        const currentQ = state.questions[state.currentIndex];
-        if (state.timerEndsAt > 0 && !state.isPaused && !state.isComplete) {
-          const remaining = Math.max(
-            0,
-            Math.ceil((state.timerEndsAt - Date.now()) / 1000)
-          );
-          setTimeLeft(remaining);
-        } else if (currentQ && currentQ.answer && state.timerEndsAt === 0) {
-          setTimeLeft(
-            getTimeLimitForDifficulty(currentQ.difficulty) -
-              (currentQ.timeSpent || 0)
-          );
-          setShowNextButton(true);
-        } else if (currentQ && !currentQ.answer && state.timerEndsAt === 0) {
-          setTimeLeft(getTimeLimitForDifficulty(currentQ.difficulty));
-        } else if (
-          state.timerEndsAt > 0 &&
-          state.timerEndsAt < Date.now() &&
-          currentQ &&
-          !currentQ.answer
-        ) {
+        const state = await getInterviewState();
+        if (state) {
           const updatedQuestions = state.questions.map((q, index) =>
-            index === state.currentIndex
-              ? {
-                  ...q,
-                  answer: "",
-                  score: 0,
-                  feedback:
-                    "Time up! No answer submitted. Automatically advanced.",
-                  timeSpent: getTimeLimitForDifficulty(currentQ.difficulty),
-                  submittedAt: Date.now(),
-                  rawSolution: "",
-                }
-              : q
+            index === indexToUpdate ? newQuestion : q
           );
           state.questions = updatedQuestions;
-          state.isPaused = true;
+          const timeLimit = getTimeLimitForDifficulty(newQuestion.difficulty);
+          state.timerEndsAt = Date.now() + timeLimit * 1000;
+          state.isPaused = false;
+          state.currentIndex = indexToUpdate;
           await saveInterviewState(state);
-          setQuestions(updatedQuestions);
-          setIsPaused(true);
-          setShowNextButton(true);
-        }
-        if (currentQ && currentQ.id.startsWith("q_placeholder")) {
-          await generateQuestion(state.currentIndex);
-        }
 
-        setIsLoading(false);
+          setQuestions([...state.questions]);
+          setTimeLeft(timeLimit);
+          setIsPaused(false);
+          setCurrentAnswer("");
+          setShowNextButton(false);
+        }
       } catch (error) {
-        console.error("Error initializing interview:", error);
-        setIsLoading(false);
+        console.error("Error generating question:", error);
       }
-    };
+    },
+    [
+      candidateData?.skills,
+      currentQuestionIndex,
+      getTimeLimitForDifficulty,
+      questions,
+      setQuestions,
+      setCurrentAnswer,
+      setIsPaused,
+      setShowNextButton,
+      setTimeLeft,
+    ]
+  );
 
-    initializeInterview();
-  }, [router]);
-
-  const generateQuestion = async (
-    indexToUpdate: number = currentQuestionIndex
-  ) => {
-    try {
-      const response = await fetch("/api/question", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          skills: candidateData?.skills || [],
-          difficulty: questions[indexToUpdate].difficulty,
-        }),
-      });
-
-      if (!response.ok) throw new Error("Failed to generate question");
-
-      const questionData = await response.json();
-      const newQuestion: Question = {
-        id: `q_${Date.now()}`,
-        question: questionData.question,
-        difficulty: questionData.difficulty,
-        rawSolution: questionData.solution,
-        timeSpent: 0,
-      };
-
-      const state = await getInterviewState();
-      if (state) {
-        const updatedQuestions = state.questions.map((q, index) =>
-          index === indexToUpdate ? newQuestion : q
-        );
-        state.questions = updatedQuestions;
-        const timeLimit = getTimeLimitForDifficulty(newQuestion.difficulty);
-        state.timerEndsAt = Date.now() + timeLimit * 1000;
-        state.isPaused = false;
-        state.currentIndex = indexToUpdate;
-        await saveInterviewState(state);
-
-        setQuestions([...state.questions]);
-        setTimeLeft(timeLimit);
-        setIsPaused(false);
-        setCurrentAnswer("");
-        setShowNextButton(false);
-      }
-    } catch (error) {
-      console.error("Error generating question:", error);
-    }
-  };
-
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () =>
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
-  }, []);
-
-  const enterFullscreen = async () => {
-    try {
-      await document.documentElement.requestFullscreen();
-      setShowFullscreenPrompt(false);
-    } catch (error) {
-      console.error("Error entering fullscreen:", error);
-    }
-  };
-
-  const exitFullscreen = async () => {
-    try {
-      await document.exitFullscreen();
-    } catch (error) {
-      console.error("Error exiting fullscreen:", error);
-    }
-  };
-
-  // Timer effect
-  useEffect(() => {
-    if (!isPaused && timeLeft > 0 && !isInterviewComplete && !showNextButton) {
-      timerRef.current = setTimeout(() => {
-        setTimeLeft((prev) => prev - 1);
-      }, 1000);
-    }
-
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
-    };
-  }, [timeLeft, isPaused, isInterviewComplete, showNextButton]);
-
-  useEffect(() => {
-    if (timeLeft === 0 && !isInterviewComplete && !showNextButton) {
-      handleSubmitAnswer();
-    }
-  }, [timeLeft, isInterviewComplete, showNextButton]);
-
-  const handleSubmitAnswer = async () => {
+  const handleSubmitAnswer = useCallback(async () => {
     if (!currentAnswer.trim() && timeLeft === 0) {
       try {
         const updatedQuestions = questions.map((q, index) =>
@@ -374,10 +245,177 @@ export default function InterviewPage() {
       console.error("Error submitting answer:", error);
       setIsSubmitting(false);
     }
+  }, [
+    currentAnswer,
+    timeLeft,
+    currentQuestion,
+    currentQuestionIndex,
+    getTimeLimitForDifficulty,
+    questions,
+    setQuestions,
+    setIsPaused,
+    setShowNextButton,
+    setIsSubmitting,
+  ]);
+
+  useEffect(() => {
+    const initializeInterview = async () => {
+      try {
+        const candidate = await getCandidateData();
+        if (!candidate) {
+          router.push("/candidate");
+          return;
+        }
+        setCandidateData(candidate);
+
+        let state = await getInterviewState();
+
+        if (!state) {
+          const initialQuestions: Question[] = Array.from(
+            { length: TOTAL_QUESTIONS },
+            (_, i) => ({
+              id: `q_placeholder_${i}`,
+              question: `Question ${i + 1}`,
+              difficulty: i < 2 ? "EASY" : i < 4 ? "MEDIUM" : "HARD",
+              timeSpent: 0,
+            })
+          );
+          state = {
+            id: `interview_${Date.now()}`,
+            questions: initialQuestions,
+            currentIndex: 0,
+            timerEndsAt: 0,
+            isPaused: false,
+            isComplete: false,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          };
+          await saveInterviewState(state);
+        } else {
+          if (state.questions.length < TOTAL_QUESTIONS) {
+            for (let i = state.questions.length; i < TOTAL_QUESTIONS; i++) {
+              state.questions.push({
+                id: `q_placeholder_${i}`,
+                question: `Question ${i + 1}`,
+                difficulty: i < 2 ? "EASY" : i < 4 ? "MEDIUM" : "HARD",
+                timeSpent: 0,
+              });
+            }
+            await saveInterviewState(state);
+          }
+        }
+
+        setQuestions(state.questions);
+        setCurrentQuestionIndex(state.currentIndex);
+        setIsPaused(state.isPaused);
+        setIsInterviewComplete(state.isComplete);
+
+        const currentQ = state.questions[state.currentIndex];
+        if (state.timerEndsAt > 0 && !state.isPaused && !state.isComplete) {
+          const remaining = Math.max(
+            0,
+            Math.ceil((state.timerEndsAt - Date.now()) / 1000)
+          );
+          setTimeLeft(remaining);
+        } else if (currentQ && currentQ.answer && state.timerEndsAt === 0) {
+          setTimeLeft(
+            getTimeLimitForDifficulty(currentQ.difficulty) -
+              (currentQ.timeSpent || 0)
+          );
+          setShowNextButton(true);
+        } else if (currentQ && !currentQ.answer && state.timerEndsAt === 0) {
+          setTimeLeft(getTimeLimitForDifficulty(currentQ.difficulty));
+        } else if (
+          state.timerEndsAt > 0 &&
+          state.timerEndsAt < Date.now() &&
+          currentQ &&
+          !currentQ.answer
+        ) {
+          const updatedQuestions = state.questions.map((q, index) =>
+            index === state.currentIndex
+              ? {
+                  ...q,
+                  // If the answer is incomplete (trimmed to empty string), the score is updated and the feedback is provided.
+                  answer: "",
+                  score: 0,
+                  feedback:
+                    "Time up! No answer submitted. Automatically advanced.",
+                  timeSpent: getTimeLimitForDifficulty(currentQ.difficulty),
+                  submittedAt: Date.now(),
+                  rawSolution: "",
+                }
+              : q
+          );
+          state.questions = updatedQuestions;
+          state.isPaused = true;
+          await saveInterviewState(state);
+          setQuestions(updatedQuestions);
+          setIsPaused(true);
+          setShowNextButton(true);
+        }
+        if (currentQ && currentQ.id.startsWith("q_placeholder")) {
+          await generateQuestion(state.currentIndex);
+        }
+
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error initializing interview:", error);
+        setIsLoading(false);
+      }
+    };
+
+    initializeInterview();
+  }, [router, generateQuestion, getTimeLimitForDifficulty]);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  const enterFullscreen = async () => {
+    try {
+      await document.documentElement.requestFullscreen();
+      setShowFullscreenPrompt(false);
+    } catch (error) {
+      console.error("Error entering fullscreen:", error);
+    }
   };
 
-  const handleNextQuestion = async () => {
+  const exitFullscreen = async () => {
+    try {
+      await document.exitFullscreen();
+    } catch (error) {
+      console.error("Error exiting fullscreen:", error);
+    }
+  };
 
+  // Timer effect
+  useEffect(() => {
+    if (!isPaused && timeLeft > 0 && !isInterviewComplete && !showNextButton) {
+      timerRef.current = setTimeout(() => {
+        setTimeLeft((prev) => prev - 1);
+      }, 1000);
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, [timeLeft, isPaused, isInterviewComplete, showNextButton]);
+
+  useEffect(() => {
+    if (timeLeft === 0 && !isInterviewComplete && !showNextButton) {
+      handleSubmitAnswer();
+    }
+  }, [timeLeft, isInterviewComplete, showNextButton, handleSubmitAnswer]);
+
+  const handleNextQuestion = async () => {
     setCurrentQuestionIndex((prevIndex) => {
       const nextIndex = prevIndex + 1;
 
@@ -390,14 +428,14 @@ export default function InterviewPage() {
           }
           setIsInterviewComplete(true);
           const candidates = await getCandidateData();
-          if(candidates) localStorage.setItem("email", candidates.email);
-          await fetch('/api/interview', {
-            method: 'POST',
+          if (candidates) localStorage.setItem("email", candidates.email);
+          await fetch("/api/interview", {
+            method: "POST",
             body: JSON.stringify({
               questions: state?.questions,
               candidateData: candidates,
             }),
-          })
+          });
         };
         completeInterview();
         return prevIndex;
@@ -448,21 +486,6 @@ export default function InterviewPage() {
         return "bg-red-100 text-red-800";
       default:
         return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getTimeLimitForDifficulty = (
-    difficulty: "EASY" | "MEDIUM" | "HARD"
-  ): number => {
-    switch (difficulty) {
-      case "EASY":
-        return 20;
-      case "MEDIUM":
-        return 60;
-      case "HARD":
-        return 120;
-      default:
-        return 20;
     }
   };
 
@@ -834,7 +857,7 @@ export default function InterviewPage() {
                             size="lg"
                             className="px-8 cursor-pointer"
                           >
-                            {currentQuestionIndex+1 == TOTAL_QUESTIONS ? (
+                            {currentQuestionIndex + 1 == TOTAL_QUESTIONS ? (
                               <>
                                 <CheckCircle className="h-4 w-4 mr-2" />
                                 Submit Test

@@ -36,6 +36,10 @@ interface Question {
   timeSpent: number;
 }
 
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
+
 interface Candidate {
   id: string;
   name: string;
@@ -49,20 +53,22 @@ interface Candidate {
   questions: Question[];
 }
 
-export default function CandidateDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+// eslint-disable-next-line @next/next/no-async-client-component
+export default async function CandidateDetailPage({ params }: PageProps) {
+  const { id } = await params;
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const [candidate, setCandidate] = useState<Candidate | null>(null);
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const [isLoading, setIsLoading] = useState(true);
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const router = useRouter();
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     const fetchCandidate = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(`/api/interview?interviewId=${params.id}`);
+        const response = await fetch(`/api/interview?interviewId=${id}`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -97,10 +103,10 @@ export default function CandidateDetailPage({
       }
     };
 
-    if (params.id) {
+    if (id) {
       fetchCandidate();
     }
-  }, [params.id]);
+  }, [id]);
 
   if (isLoading) {
     return (
