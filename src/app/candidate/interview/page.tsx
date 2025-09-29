@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { CiLock } from "react-icons/ci";
 import {
   Clock,
   Send,
@@ -151,7 +152,6 @@ export default function InterviewPage() {
           currentQ &&
           !currentQ.answer
         ) {
-
           const updatedQuestions = state.questions.map((q, index) =>
             index === state.currentIndex
               ? {
@@ -403,14 +403,6 @@ export default function InterviewPage() {
   };
 
   const handleNextQuestion = async () => {
-    // Ensure the current question has been processed (answered or time-upped)
-    // Before moving to the next one.
-    if (!currentQuestion || (!currentQuestion.answer && !showNextButton)) {
-      console.warn(
-        "Cannot move to next question: Current question not processed."
-      );
-      return;
-    }
 
     setCurrentQuestionIndex((prevIndex) => {
       const nextIndex = prevIndex + 1;
@@ -424,6 +416,15 @@ export default function InterviewPage() {
             await saveInterviewState(state);
           }
           setIsInterviewComplete(true);
+          const candidates = await getCandidateData();
+          if(candidates) localStorage.setItem("email", candidates.email);
+          await fetch('/api/interview', {
+            method: 'POST',
+            body: JSON.stringify({
+              questions: state?.questions,
+              candidateData: candidates,
+            }),
+          })
         };
         completeInterview();
         return prevIndex; // Stay on the last question until interview completion UI is shown
@@ -543,8 +544,7 @@ export default function InterviewPage() {
               Fullscreen Required
             </h1>
             <p className="text-gray-600 mb-6">
-              For the best interview experience, please enter fullscreen mode.
-              This helps you focus on the questions without distractions.
+              To start the interview, please enter fullscreen mode.
             </p>
             <Button onClick={enterFullscreen} size="lg" className="w-full">
               <Maximize2 className="h-5 w-5 mr-2" />
@@ -585,7 +585,7 @@ export default function InterviewPage() {
                 onClick={exitFullscreen}
                 variant="outline"
                 size="lg"
-                className="px-8 py-6"
+                className="px-8 py-6 hover:bg-gray-100 dark:hover:bg-gray-800"
               >
                 <Minimize2 className="h-5 w-5 mr-2" />
                 Exit Fullscreen
@@ -615,25 +615,18 @@ export default function InterviewPage() {
               </h2>
             </div>
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
+              className="hover:bg-gray-100 dark:hover:bg-gray-800"
               onClick={() => setSidebarOpen(false)}
             >
               <X className="h-4 w-4" />
             </Button>
           </div>
 
-          {/* Candidate Info */}
-          <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-            <h3 className="font-medium text-gray-900 mb-2">
-              {candidateData.name}
-            </h3>
-            <p className="text-sm text-gray-600">{candidateData.email}</p>
-          </div>
-
           {/* Timer */}
           <Card className="mb-6">
-            <CardContent className="p-4 text-center">
+            <CardContent className="p-2 text-center">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Timer className="h-5 w-5 text-gray-500" />
                 <span className="text-sm text-gray-600">Time Remaining</span>
@@ -672,8 +665,8 @@ export default function InterviewPage() {
               const isCurrent = index === currentQuestionIndex;
               const isAnswered =
                 question?.answer !== undefined && question.answer !== "";
-              const isClickable = index <= currentQuestionIndex || isAnswered;
-
+              const isClickable = isCurrent;
+              const isPast = index < currentQuestionIndex && !isAnswered;
               return (
                 <motion.div
                   key={question?.id || `placeholder_${index}`}
@@ -682,13 +675,15 @@ export default function InterviewPage() {
                   transition={{ delay: index * 0.05 }}
                   className={`p-3 rounded-lg transition-all ${
                     isClickable
-                      ? "cursor-pointer hover:bg-gray-200"
+                      ? "cursor-pointer"
                       : "cursor-not-allowed opacity-50"
                   } ${
                     isCurrent
                       ? "bg-blue-100 border-2 border-blue-500"
                       : isAnswered
                       ? "bg-green-100"
+                      : isPast
+                      ? "bg-red-100"
                       : "bg-gray-100"
                   }`}
                   onClick={() => isClickable && setCurrentQuestionIndex(index)}
@@ -724,8 +719,10 @@ export default function InterviewPage() {
                             {question.score}%
                           </span>
                         )}
-                        {!isClickable && (
-                          <span className="text-xs text-gray-500">Locked</span>
+                        {!isPast && !isCurrent && (
+                          <span className="text-xs text-gray-500">
+                            <CiLock className="h-4 w-4" />
+                          </span>
                         )}
                       </div>
                     </div>
@@ -781,7 +778,7 @@ export default function InterviewPage() {
                   {timeLeft}
                 </span>
               </div>
-              <Button
+              {/* <Button
                 variant="outline"
                 size="sm"
                 onClick={handlePauseResume}
@@ -792,8 +789,13 @@ export default function InterviewPage() {
                 ) : (
                   <Pause className="h-4 w-4" />
                 )}
-              </Button>
-              <Button variant="outline" size="sm" onClick={exitFullscreen}>
+              </Button> */}
+              <Button
+                variant="outline"
+                className="hover:bg-gray-100"
+                size="sm"
+                onClick={exitFullscreen}
+              >
                 <Minimize2 className="h-4 w-4" />
               </Button>
             </div>
@@ -804,123 +806,131 @@ export default function InterviewPage() {
         </div>
 
         {/* Question Content */}
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-4">
           <Card className="h-full">
-            <CardContent className="p-8 h-full flex flex-col">
+            <CardContent className="p-4 h-full flex flex-col">
               <div className="flex-1">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-8">
-                  {currentQuestion.question}
-                </h2>
+                {currentQuestion.id.startsWith("q_placeholder") ? (
+                  <div className="flex flex-col items-center justify-center h-full">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                    <p className="text-gray-600">Loading question...</p>
+                  </div>
+                ) : (
+                  <>
+                    <h2 className="text-2xl font-semibold text-gray-900 mb-8">
+                      {currentQuestion.question}
+                    </h2>
 
-                <div className="space-y-6">
-                  <Textarea
-                    value={currentAnswer}
-                    onChange={(e) => setCurrentAnswer(e.target.value)}
-                    placeholder="Type your answer here..."
-                    className="min-h-[300px] resize-none text-lg"
-                    disabled={
-                      isSubmitting ||
-                      isPaused ||
-                      (timeLeft === 0 && !currentAnswer.trim())
-                    }
-                  />
-
-                  {timeLeft === 0 &&
-                    !currentAnswer.trim() &&
-                    currentQuestion.rawSolution && (
-                      <div className="space-y-4 p-4 rounded-md bg-red-50 border border-red-200">
-                        <h3 className="text-lg font-semibold text-red-700">
-                          Time Up! No Answer Submitted.
-                        </h3>
-                        <div className="text-gray-700">
-                          <h4 className="font-medium mb-2">
-                            Suggested Solution:
-                          </h4>
-                          <p className="whitespace-pre-wrap">
-                            {currentQuestion.rawSolution}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                  {currentQuestion.feedback && currentQuestion.answer && (
-                    <div className="space-y-4 p-4 rounded-md bg-blue-50 border border-blue-200">
-                      <h3 className="text-lg font-semibold text-blue-700">
-                        Feedback & Score: {currentQuestion.score}%
-                      </h3>
-                      <p className="text-gray-700">
-                        {currentQuestion.feedback}
-                      </p>
-                      {currentQuestion.rawSolution && (
-                        <div className="text-gray-700">
-                          <h4 className="font-medium mb-2">
-                            Suggested Solution:
-                          </h4>
-                          <p className="whitespace-pre-wrap">
-                            {currentQuestion.rawSolution}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-4">
-                      <p className="text-sm text-gray-500">
-                        {currentAnswer.length} characters
-                      </p>
-                      {timeLeft <= 10 && timeLeft > 0 && (
-                        <div className="flex items-center gap-1 text-red-500">
-                          <AlertCircle className="h-4 w-4" />
-                          <span className="text-sm">Time running out!</span>
-                        </div>
-                      )}
-                    </div>
-                    {showNextButton ? (
-                      <Button
-                        onClick={handleNextQuestion}
-                        size="lg"
-                        className="px-8"
-                      >
-                        {questions.filter((q) => q.timeSpent && q.timeSpent > 0)
-                          .length >= TOTAL_QUESTIONS ? (
-                          <>
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                            Complete Interview
-                          </>
-                        ) : (
-                          <>
-                            <ArrowRight className="h-4 w-4 mr-2" />
-                            Next Question
-                          </>
-                        )}
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={handleSubmitAnswer}
+                    <div className="space-y-6">
+                      <Textarea
+                        value={currentAnswer}
+                        onChange={(e) => setCurrentAnswer(e.target.value)}
+                        placeholder="Type your answer here..."
+                        className="min-h-[150px] resize-none text-lg"
                         disabled={
-                          !currentAnswer.trim() ||
                           isSubmitting ||
+                          isPaused ||
                           (timeLeft === 0 && !currentAnswer.trim())
                         }
-                        size="lg"
-                        className="px-8"
-                      >
-                        {isSubmitting ? (
-                          <div className="flex items-center gap-2">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                            Processing...
+                      />
+
+                      {timeLeft === 0 &&
+                        !currentAnswer.trim() &&
+                        currentQuestion.rawSolution && (
+                          <div className="space-y-4 p-4 rounded-md bg-red-50 border border-red-200">
+                            <h3 className="text-lg font-semibold text-red-700">
+                              Time Up! No Answer Submitted.
+                            </h3>
+                            <div className="text-gray-700">
+                              <h4 className="font-medium mb-2">
+                                Suggested Solution:
+                              </h4>
+                              <p className="whitespace-pre-wrap">
+                                {currentQuestion.rawSolution}
+                              </p>
+                            </div>
                           </div>
-                        ) : (
-                          <>
-                            <Send className="h-4 w-4 mr-2" />
-                            Submit Answer
-                          </>
                         )}
-                      </Button>
-                    )}
-                  </div>
-                </div>
+
+                      {currentQuestion.feedback && currentQuestion.answer && (
+                        <div className="space-y-4 p-4 rounded-md bg-blue-50 border border-blue-200">
+                          <h3 className="text-lg font-semibold text-blue-700">
+                            Feedback & Score: {currentQuestion.score}%
+                          </h3>
+                          <p className="text-gray-700 max-h-[150px] overflow-y-auto">
+                            {currentQuestion.feedback}
+                          </p>
+                          {currentQuestion.rawSolution && (
+                            <div className="text-gray-700">
+                              <h4 className="font-medium mb-2">
+                                Suggested Solution:
+                              </h4>
+                              <p className="whitespace-pre-wrap">
+                                {currentQuestion.rawSolution}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-4">
+                          <p className="text-sm text-gray-500">
+                            {currentAnswer.length} characters
+                          </p>
+                          {timeLeft <= 10 && timeLeft > 0 && (
+                            <div className="flex items-center gap-1 text-red-500">
+                              <AlertCircle className="h-4 w-4" />
+                              <span className="text-sm">Time running out!</span>
+                            </div>
+                          )}
+                        </div>
+                        {showNextButton || currentQuestion.answer ? (
+                          <Button
+                            onClick={handleNextQuestion}
+                            size="lg"
+                            className="px-8 cursor-pointer"
+                          >
+                            {currentQuestionIndex+1 == TOTAL_QUESTIONS ? (
+                              <>
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Submit Test
+                              </>
+                            ) : (
+                              <>
+                                <ArrowRight className="h-4 w-4 mr-2" />
+                                Next Question
+                              </>
+                            )}
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={handleSubmitAnswer}
+                            disabled={
+                              !currentAnswer.trim() ||
+                              isSubmitting ||
+                              (timeLeft === 0 && !currentAnswer.trim())
+                            }
+                            size="lg"
+                            className="px-8"
+                          >
+                            {isSubmitting ? (
+                              <div className="flex items-center gap-2">
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                Processing...
+                              </div>
+                            ) : (
+                              <>
+                                <Send className="h-4 w-4 mr-2" />
+                                Submit Answer
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>

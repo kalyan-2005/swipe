@@ -198,7 +198,7 @@ export default function ResultsPage() {
                   <span>{candidateData.phone}</span>
                 </div>
               </div>
-              <div className="mt-4">
+              {/* <div className="mt-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Target className="h-4 w-4 text-gray-500" />
                   <span className="font-medium">Skills:</span>
@@ -210,7 +210,7 @@ export default function ResultsPage() {
                     </Badge>
                   ))}
                 </div>
-              </div>
+              </div> */}
             </CardContent>
           </Card>
         )}

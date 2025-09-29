@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Question } from "@prisma/client";
-import { clearAllData } from "@/lib/indexedDB";
 
 export async function POST(req: Request) {
   try {
-    const { questions, candidateData, score } = await req.json();
+    const { questions, candidateData } = await req.json();
 
     if (!questions || !candidateData) {
       return NextResponse.json(
@@ -20,6 +19,10 @@ export async function POST(req: Request) {
         phone: candidateData.phone,
       },
     });
+    const score = questions.reduce(
+      (total: number, q: Question) => total + q.score!,
+      0
+    );
     // Always create a new interview for a completed submission
     const interview = await prisma.interview.create({
       data: {
@@ -29,7 +32,7 @@ export async function POST(req: Request) {
         completedAt: new Date(),
         questions: {
           create: questions.map((q: Question) => ({
-            questionNumber: q.questionNumber,
+            questionNumber: 0,
             difficulty: q.difficulty,
             question: q.question,
             answer: q.answer,
@@ -40,8 +43,6 @@ export async function POST(req: Request) {
         },
       },
     });
-    await clearAllData();
-    localStorage.setItem("email", candidateData.email);
 
     return NextResponse.json({
       message: "Interview data saved successfully!",

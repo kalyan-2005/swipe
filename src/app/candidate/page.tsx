@@ -68,14 +68,14 @@ export default function CandidatePage() {
         id: "1",
         type: "bot",
         content:
-          "Hi there! 👋 I&apos;m your AI interview assistant. I&apos;ll help you get started with your interview preparation. First, I need to collect some basic information about you.",
+          "Hi there! 👋 I'm your AI interview assistant. I'll help you get started with your interview preparation. First, I need to collect some basic information about you.",
         timestamp: new Date(),
       },
       {
         id: "2",
         type: "bot",
         content:
-          "Could you please upload your resume? I&apos;ll extract your name, email, and phone number from it to get started.",
+          "Could you please upload your resume to get started!",
         timestamp: new Date(),
       },
     ];
@@ -127,7 +127,7 @@ export default function CandidatePage() {
       const file = acceptedFiles[0];
       if (!file) return;
 
-      addMessage(`Uploaded file: ${file.name}`, "user");
+      addMessage(`My Resume: ${file.name}`, "user");
       setIsUploading(true);
       setUploadError(null);
       setCurrentStep("extract");
@@ -186,7 +186,7 @@ export default function CandidatePage() {
           setCurrentStep("verify");
         } else {
           simulateBotResponse(
-            "I couldn&apos;t find your name, email, or phone number in the resume. Could you please provide your details manually?",
+            "I couldn't find your name, email, or phone number in the resume. Could you please provide your details manually?",
             2000
           );
           setCurrentStep("verify");
@@ -214,6 +214,7 @@ export default function CandidatePage() {
   });
 
   const handleManualInput = () => {
+    setShowConfirmation(true);
     if (!manualData.name || !manualData.email) {
       addMessage(
         "Please provide at least your name and email to continue.",
@@ -248,7 +249,7 @@ export default function CandidatePage() {
 
   const handleConfirmInfo = () => {
     addMessage("Yes, that&apos;s correct!", "user");
-    setShowConfirmation(false);
+    // setShowConfirmation(false);
     simulateBotResponse(
       "Excellent! Let me prepare your interview session...",
       1500
@@ -270,16 +271,16 @@ export default function CandidatePage() {
     addMessage("No, that&apos;s not correct", "user");
     setShowConfirmation(false);
     simulateBotResponse(
-      "No problem! Please correct the information below and I&apos;ll use the updated details.",
+      "No problem! Please correct the information below and I'll use the updated details.",
       1500
     );
     setCurrentStep("correct");
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="h-screen bg-white">
       {/* Navigation */}
-      <nav className="border-b bg-white/80 backdrop-blur-sm">
+      <nav className="bg-white/80 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -288,18 +289,18 @@ export default function CandidatePage() {
                 AI Interview Assistant
               </span>
             </div>
-            <Button variant="ghost" onClick={() => router.push("/")}>
+            <Button variant="outline" className="hover:bg-gray-100 cursor-pointer" onClick={() => router.push("/")}>
               Back to Home
             </Button>
           </div>
         </div>
       </nav>
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto p-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
+          transition={{ duration: 0.4 }}
           className="max-w-4xl mx-auto"
         >
           {/* Chat Interface */}
@@ -321,20 +322,20 @@ export default function CandidatePage() {
                       }`}
                     >
                       <div
-                        className={`max-w-[80%] rounded-lg p-4 ${
+                        className={`max-w-[80%] rounded-xl p-4 ${
                           message.type === "user"
                             ? "bg-blue-600 text-white"
-                            : "bg-gray-100 text-gray-900"
+                            : "border-blue-400 border-2"
                         }`}
                       >
                         {message.isTyping ? (
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-start gap-2 items-center">
                             <Loader2 className="h-4 w-4 animate-spin" />
                             <span>AI is typing...</span>
                           </div>
                         ) : (
-                          <div className="whitespace-pre-wrap">
-                            {message.content}
+                          <div className="whitespace-pre-wrap flex gap-2">
+                            <span>{message.content}</span>
                           </div>
                         )}
                       </div>
@@ -381,7 +382,7 @@ export default function CandidatePage() {
 
               {/* Confirmation Buttons */}
               {currentStep === "verify" && showConfirmation && (
-                <div className="border-t p-6">
+                <div className="border-t p-2">
                   <div className="flex gap-2">
                     <Button onClick={handleConfirmInfo} className="flex-1">
                       <CheckCircle className="h-4 w-4 mr-2" />
@@ -390,7 +391,7 @@ export default function CandidatePage() {
                     <Button
                       onClick={handleRejectInfo}
                       variant="outline"
-                      className="flex-1"
+                      className="flex-1 hover:bg-gray-100"
                     >
                       <AlertCircle className="h-4 w-4 mr-2" />
                       No, that&apos;s not correct
@@ -472,7 +473,7 @@ export default function CandidatePage() {
                     <Button
                       onClick={handleManualInput}
                       variant="outline"
-                      className="flex-1"
+                      className="flex-1 hover:bg-gray-100 cursor-pointer"
                     >
                       <Send className="h-4 w-4 mr-2" />
                       Submit Details

@@ -188,12 +188,17 @@ export default function InterviewerDashboard() {
               </span>
             </div>
             <div className="flex items-center gap-4">
-              <Button variant="outline" onClick={() => router.push("/")}>
+              <Button
+                variant="outline"
+                onClick={() => router.push("/")}
+                className="hover:bg-gray-100"
+              >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Home
               </Button>
               <Button
                 variant="outline"
+                className="hover:bg-gray-100"
                 onClick={handleRefresh}
                 disabled={isLoading}
               >
@@ -350,12 +355,13 @@ export default function InterviewerDashboard() {
                             )}
                           >
                             {candidate.questions.length > 0
-                              ? `${
-                                  candidate.questions.reduce(
+                              ? `${Math.round(
+                                  (candidate.questions.reduce(
                                     (sum, question) => sum + question.score,
                                     0
-                                  ) / candidate.questions.length
-                                }%`
+                                  ))
+                                  /candidate.questions.length
+                                )}%`
                               : "N/A"}
                           </span>
                         </TableCell>
@@ -374,11 +380,16 @@ export default function InterviewerDashboard() {
                                   `/interviewer/candidate/${candidate.id}`
                                 )
                               }
+                              className="hover:bg-gray-100"
                             >
                               <Eye className="h-4 w-4 mr-1" />
                               View
                             </Button>
-                            <Button size="sm" variant="outline">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="hover:bg-gray-100"
+                            >
                               <Download className="h-4 w-4" />
                             </Button>
                           </div>

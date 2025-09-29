@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-toggle";
+import Image from "next/image";
 
 export default function Home() {
   return (
@@ -33,14 +34,11 @@ export default function Home() {
               animate={{ opacity: 1, x: 0 }}
               className="flex items-center space-x-2"
             >
-              <Brain className="h-8 w-8 text-blue-600" />
-              <span className="text-2xl font-bold text-gray-900 dark:text-white">
-                Swipe Interviews
-              </span>
+              <Image src="/logo.svg" alt="Logo" width={100} height={100} />
             </motion.div>
             <div className="flex items-center space-x-4">
               <ThemeToggle />
-              <Button variant="ghost" asChild>
+              <Button variant="secondary" asChild>
                 <Link href="/interviewer">Interviewer Dashboard</Link>
               </Button>
               <Button asChild>
@@ -52,25 +50,26 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-20">
-        <div className="text-center max-w-4xl mx-auto">
+      <section className="container mx-auto px-4 py-20 flex justify-between items-center">
+        <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <h1 className="text-5xl md:text-7xl font-bold text-gray-900 dark:text-white mb-6">
+            <p className="bg-green-100 border-2 border-green-400 inline p-1 px-2 rounded-full font-semibold text-xs">100% Simple & Effective!</p>
+            <h1 className="text-xl md:text-5xl font-bold text-gray-900 dark:text-white my-8">
               AI-Powered
               <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 {" "}
                 Interview Assistant
               </span>
             </h1>
-            <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
-              Practice interviews with live scoring and AI feedback. Get instant
+            <p className="text-lg text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
+              Practice interviews with live scoring and AI feedback.<br/>Get instant
               insights to improve your performance.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-4">
               <Button size="lg" className="text-lg px-8 py-6" asChild>
                 <Link href="/candidate">
                   Get Started
@@ -80,13 +79,16 @@ export default function Home() {
               <Button
                 size="lg"
                 variant="outline"
-                className="text-lg px-8 py-6"
+                className="text-lg px-8 py-6 hover:bg-gray-100 dark:hover:bg-gray-800"
                 asChild
               >
                 <Link href="/interviewer">Interviewer Login</Link>
               </Button>
             </div>
           </motion.div>
+        </div>
+        <div>
+          <Image src="/hero.png" alt="Hero" width={1000} height={1000}/>
         </div>
       </section>
 
@@ -164,7 +166,7 @@ export default function Home() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: 0.2 }}
             className="text-center mb-16"
           >
             <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
@@ -223,7 +225,7 @@ export default function Home() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
+          transition={{ duration: 0.2 }}
           className="text-center"
         >
           <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
@@ -245,7 +247,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t bg-white dark:bg-gray-900 py-8">
         <div className="container mx-auto px-4 text-center text-gray-600 dark:text-gray-400">
-          <p>&copy; 2024 Swipe Interviews. All rights reserved.</p>
+          <p>&copy; 2025 Swipe Interviews. All rights reserved.</p>
         </div>
       </footer>
     </div>

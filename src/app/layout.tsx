@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Swipe Interviews - AI-Powered Interview Assistant",
+  title: "Swipe AI-Interviews",
   description:
     "Practice interviews with live scoring and AI feedback. Get instant insights to improve your performance.",
 };
@@ -28,7 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased px-40 bg-white`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased lg:px-40 bg-white`}
       >
         <ThemeProvider attribute="class" defaultTheme="light">
           {children}

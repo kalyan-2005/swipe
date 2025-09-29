@@ -100,7 +100,7 @@ export const saveInterviewState = async (state: InterviewState) => {
 export const getInterviewState = async (): Promise<InterviewState | null> => {
   const db = await initDB();
   const states = await db.getAll(STATE_STORE);
-  return states.length > 0 ? states[0] : null;
+  return states.length > 0 ? states[states.length - 1] : null;
 };
 
 export const clearInterviewState = async () => {
@@ -117,7 +117,7 @@ export const saveCandidateData = async (candidate: CandidateData) => {
 export const getCandidateData = async (): Promise<CandidateData | null> => {
   const db = await initDB();
   const candidates = await db.getAll(CANDIDATE_STORE);
-  return candidates.length > 0 ? candidates[0] : null;
+  return candidates.length > 0 ? candidates[candidates.length - 1] : null;
 };
 
 export const clearCandidateData = async () => {
