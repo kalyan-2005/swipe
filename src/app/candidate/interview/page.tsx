@@ -1,16 +1,18 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { CiLock } from "react-icons/ci";
 import {
   Clock,
   Send,
+  Pause,
+  Play,
+  RotateCcw,
   CheckCircle,
   Maximize2,
   Minimize2,
@@ -26,7 +28,9 @@ import {
   getInterviewState,
   saveInterviewState,
   getCandidateData,
+  saveCandidateData,
   type Question,
+  type InterviewState,
   type CandidateData,
 } from "@/lib/indexedDB";
 
@@ -36,6 +40,7 @@ export default function InterviewPage() {
   const [candidateData, setCandidateData] = useState<CandidateData | null>(
     null
   );
+  // Initialize questions as an array of placeholders
   const [questions, setQuestions] = useState<Question[]>(
     Array.from({ length: TOTAL_QUESTIONS }, (_, i) => ({
       id: `q_placeholder_${i}`,
@@ -46,7 +51,7 @@ export default function InterviewPage() {
   );
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [currentAnswer, setCurrentAnswer] = useState("");
-  const [timeLeft, setTimeLeft] = useState(20);
+  const [timeLeft, setTimeLeft] = useState(20); // Initialized with a default, will be updated
   const [isPaused, setIsPaused] = useState(false);
   const [isInterviewComplete, setIsInterviewComplete] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,203 +69,11 @@ export default function InterviewPage() {
       ? ((currentQuestionIndex + 1) / questions.length) * 100
       : 0;
 
-  const getTimeLimitForDifficulty = useCallback(
-    (difficulty: "EASY" | "MEDIUM" | "HARD"): number => {
-      switch (difficulty) {
-        case "EASY":
-          return 20;
-        case "MEDIUM":
-          return 60;
-        case "HARD":
-          return 120;
-        default:
-          return 20;
-      }
-    },
-    []
-  );
-
-  const generateQuestion = useCallback(
-    async (indexToUpdate: number = currentQuestionIndex) => {
-      try {
-        const response = await fetch("/api/question", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            skills: candidateData?.skills || [],
-            difficulty: questions[indexToUpdate].difficulty,
-          }),
-        });
-
-        if (!response.ok) throw new Error("Failed to generate question");
-
-        const questionData = await response.json();
-        const newQuestion: Question = {
-          id: `q_${Date.now()}`,
-          question: questionData.question,
-          difficulty: questionData.difficulty,
-          rawSolution: questionData.solution,
-          timeSpent: 0,
-        };
-
-        const state = await getInterviewState();
-        if (state) {
-          const updatedQuestions = state.questions.map((q, index) =>
-            index === indexToUpdate ? newQuestion : q
-          );
-          state.questions = updatedQuestions;
-          const timeLimit = getTimeLimitForDifficulty(newQuestion.difficulty);
-          state.timerEndsAt = Date.now() + timeLimit * 1000;
-          state.isPaused = false;
-          state.currentIndex = indexToUpdate;
-          await saveInterviewState(state);
-
-          setQuestions([...state.questions]);
-          setTimeLeft(timeLimit);
-          setIsPaused(false);
-          setCurrentAnswer("");
-          setShowNextButton(false);
-        }
-      } catch (error) {
-        console.error("Error generating question:", error);
-      }
-    },
-    [
-      candidateData?.skills,
-      currentQuestionIndex,
-      getTimeLimitForDifficulty,
-      questions,
-      setQuestions,
-      setCurrentAnswer,
-      setIsPaused,
-      setShowNextButton,
-      setTimeLeft,
-    ]
-  );
-
-  const handleSubmitAnswer = useCallback(async () => {
-    if (!currentAnswer.trim() && timeLeft === 0) {
-      try {
-        const updatedQuestions = questions.map((q, index) =>
-          index === currentQuestionIndex
-            ? {
-                ...q,
-                answer: "",
-                score: 0,
-                feedback:
-                  "Time up! No answer submitted. Solution automatically provided.",
-                timeSpent:
-                  getTimeLimitForDifficulty(currentQuestion.difficulty) -
-                  timeLeft,
-                submittedAt: Date.now(),
-                rawSolution: "",
-              }
-            : q
-        );
-
-        const state = await getInterviewState();
-        if (state) {
-          state.questions = updatedQuestions;
-          state.isPaused = true;
-          await saveInterviewState(state);
-        }
-        setQuestions(updatedQuestions);
-        setIsPaused(true);
-        setShowNextButton(true);
-      } catch (error) {
-        console.error("Error fetching solution on time up:", error);
-        const updatedQuestions = questions.map((q, index) =>
-          index === currentQuestionIndex
-            ? {
-                ...q,
-                answer: "",
-                score: 0,
-                feedback:
-                  "Time up! No answer submitted. Failed to load solution.",
-                timeSpent:
-                  getTimeLimitForDifficulty(currentQuestion.difficulty) -
-                  timeLeft,
-                submittedAt: Date.now(),
-              }
-            : q
-        );
-        const state = await getInterviewState();
-        if (state) {
-          state.questions = updatedQuestions;
-          state.isPaused = true;
-          await saveInterviewState(state);
-        }
-        setQuestions(updatedQuestions);
-        setIsPaused(true);
-        setShowNextButton(true);
-      }
-      return;
-    }
-
-    if (!currentAnswer.trim() && timeLeft > 0) return;
-
-    setIsSubmitting(true);
-
-    try {
-      const response = await fetch("/api/evaluate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          question: currentQuestion.question,
-          answer: currentAnswer,
-        }),
-      });
-
-      if (!response.ok) throw new Error("Failed to evaluate answer");
-
-      const evaluation = await response.json();
-      const timeSpent =
-        getTimeLimitForDifficulty(currentQuestion.difficulty) - timeLeft;
-
-      const updatedQuestions = questions.map((q, index) =>
-        index === currentQuestionIndex
-          ? {
-              ...q,
-              answer: currentAnswer,
-              score: evaluation.score,
-              feedback: evaluation.feedback,
-              timeSpent,
-              submittedAt: Date.now(),
-            }
-          : q
-      );
-
-      const state = await getInterviewState();
-      if (state) {
-        state.questions = updatedQuestions;
-        state.isPaused = true;
-        await saveInterviewState(state);
-      }
-
-      setQuestions(updatedQuestions);
-      setIsPaused(true);
-      setShowNextButton(true);
-      setIsSubmitting(false);
-    } catch (error) {
-      console.error("Error submitting answer:", error);
-      setIsSubmitting(false);
-    }
-  }, [
-    currentAnswer,
-    timeLeft,
-    currentQuestion,
-    currentQuestionIndex,
-    getTimeLimitForDifficulty,
-    questions,
-    setQuestions,
-    setIsPaused,
-    setShowNextButton,
-    setIsSubmitting,
-  ]);
-
+  // Initialize interview state
   useEffect(() => {
     const initializeInterview = async () => {
       try {
+        // Load candidate data from IndexedDB
         const candidate = await getCandidateData();
         if (!candidate) {
           router.push("/candidate");
@@ -268,9 +81,11 @@ export default function InterviewPage() {
         }
         setCandidateData(candidate);
 
+        // Load interview state from IndexedDB
         let state = await getInterviewState();
 
         if (!state) {
+          // Create new interview state with placeholder questions
           const initialQuestions: Question[] = Array.from(
             { length: TOTAL_QUESTIONS },
             (_, i) => ({
@@ -292,6 +107,7 @@ export default function InterviewPage() {
           };
           await saveInterviewState(state);
         } else {
+          // Ensure questions array always has TOTAL_QUESTIONS length
           if (state.questions.length < TOTAL_QUESTIONS) {
             for (let i = state.questions.length; i < TOTAL_QUESTIONS; i++) {
               state.questions.push({
@@ -305,11 +121,13 @@ export default function InterviewPage() {
           }
         }
 
+        // Load questions and current state
         setQuestions(state.questions);
         setCurrentQuestionIndex(state.currentIndex);
         setIsPaused(state.isPaused);
         setIsInterviewComplete(state.isComplete);
 
+        // Calculate time left
         const currentQ = state.questions[state.currentIndex];
         if (state.timerEndsAt > 0 && !state.isPaused && !state.isComplete) {
           const remaining = Math.max(
@@ -318,12 +136,14 @@ export default function InterviewPage() {
           );
           setTimeLeft(remaining);
         } else if (currentQ && currentQ.answer && state.timerEndsAt === 0) {
+          // If question is already answered, set timeLeft to its timeSpent
           setTimeLeft(
             getTimeLimitForDifficulty(currentQ.difficulty) -
               (currentQ.timeSpent || 0)
           );
           setShowNextButton(true);
         } else if (currentQ && !currentQ.answer && state.timerEndsAt === 0) {
+          // If question is not answered and timer wasn't started, set to full time
           setTimeLeft(getTimeLimitForDifficulty(currentQ.difficulty));
         } else if (
           state.timerEndsAt > 0 &&
@@ -331,28 +151,30 @@ export default function InterviewPage() {
           currentQ &&
           !currentQ.answer
         ) {
+
           const updatedQuestions = state.questions.map((q, index) =>
             index === state.currentIndex
               ? {
                   ...q,
-                  // If the answer is incomplete (trimmed to empty string), the score is updated and the feedback is provided.
                   answer: "",
                   score: 0,
                   feedback:
                     "Time up! No answer submitted. Automatically advanced.",
-                  timeSpent: getTimeLimitForDifficulty(currentQ.difficulty),
+                  timeSpent: getTimeLimitForDifficulty(currentQ.difficulty), // Full time spent
                   submittedAt: Date.now(),
                   rawSolution: "",
                 }
               : q
           );
           state.questions = updatedQuestions;
-          state.isPaused = true;
+          state.isPaused = true; // Stop timer for this question
           await saveInterviewState(state);
           setQuestions(updatedQuestions);
           setIsPaused(true);
           setShowNextButton(true);
+          // Do not immediately move to the next question here, as it will be handled by the next button click.
         }
+        // Generate the current question if it's a placeholder
         if (currentQ && currentQ.id.startsWith("q_placeholder")) {
           await generateQuestion(state.currentIndex);
         }
@@ -365,8 +187,58 @@ export default function InterviewPage() {
     };
 
     initializeInterview();
-  }, [router, generateQuestion, getTimeLimitForDifficulty]);
+  }, [router]);
 
+  // Generate a new question
+  const generateQuestion = async (
+    indexToUpdate: number = currentQuestionIndex
+  ) => {
+    try {
+      const response = await fetch("/api/question", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          skills: candidateData?.skills || [],
+          difficulty: questions[indexToUpdate].difficulty, // Use difficulty from placeholder
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to generate question");
+
+      const questionData = await response.json();
+      const newQuestion: Question = {
+        id: `q_${Date.now()}`,
+        question: questionData.question,
+        difficulty: questionData.difficulty,
+        rawSolution: questionData.solution, // Store the solution as rawSolution
+        timeSpent: 0,
+      };
+
+      // Update state
+      const state = await getInterviewState();
+      if (state) {
+        const updatedQuestions = state.questions.map((q, index) =>
+          index === indexToUpdate ? newQuestion : q
+        );
+        state.questions = updatedQuestions;
+        const timeLimit = getTimeLimitForDifficulty(newQuestion.difficulty);
+        state.timerEndsAt = Date.now() + timeLimit * 1000;
+        state.isPaused = false;
+        state.currentIndex = indexToUpdate; // Ensure current index is set correctly
+        await saveInterviewState(state);
+
+        setQuestions([...state.questions]);
+        setTimeLeft(timeLimit);
+        setIsPaused(false);
+        setCurrentAnswer("");
+        setShowNextButton(false);
+      }
+    } catch (error) {
+      console.error("Error generating question:", error);
+    }
+  };
+
+  // Fullscreen functionality
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
@@ -409,17 +281,142 @@ export default function InterviewPage() {
     };
   }, [timeLeft, isPaused, isInterviewComplete, showNextButton]);
 
+  // Auto-submit when time runs out
   useEffect(() => {
     if (timeLeft === 0 && !isInterviewComplete && !showNextButton) {
       handleSubmitAnswer();
     }
-  }, [timeLeft, isInterviewComplete, showNextButton, handleSubmitAnswer]);
+  }, [timeLeft, isInterviewComplete, showNextButton]);
+
+  const handleSubmitAnswer = async () => {
+    if (!currentAnswer.trim() && timeLeft === 0) {
+      // Fetch solution from new API endpoint
+      try {
+        const updatedQuestions = questions.map((q, index) =>
+          index === currentQuestionIndex
+            ? {
+                ...q,
+                answer: "", // Set the fetched solution as the answer
+                score: 0, // Score is 0
+                feedback:
+                  "Time up! No answer submitted. Solution automatically provided.",
+                timeSpent:
+                  getTimeLimitForDifficulty(currentQuestion.difficulty) -
+                  timeLeft, // Full time spent
+                submittedAt: Date.now(),
+                rawSolution: "",
+              }
+            : q
+        );
+
+        const state = await getInterviewState();
+        if (state) {
+          state.questions = updatedQuestions;
+          state.isPaused = true; // Stop timer
+          await saveInterviewState(state);
+        }
+        setQuestions(updatedQuestions);
+        setIsPaused(true);
+        setShowNextButton(true);
+      } catch (error) {
+        console.error("Error fetching solution on time up:", error);
+        // Proceed without solution if fetching fails
+        const updatedQuestions = questions.map((q, index) =>
+          index === currentQuestionIndex
+            ? {
+                ...q,
+                answer: "",
+                score: 0,
+                feedback:
+                  "Time up! No answer submitted. Failed to load solution.",
+                timeSpent:
+                  getTimeLimitForDifficulty(currentQuestion.difficulty) -
+                  timeLeft,
+                submittedAt: Date.now(),
+              }
+            : q
+        );
+        const state = await getInterviewState();
+        if (state) {
+          state.questions = updatedQuestions;
+          state.isPaused = true;
+          await saveInterviewState(state);
+        }
+        setQuestions(updatedQuestions);
+        setIsPaused(true);
+        setShowNextButton(true);
+      }
+      return;
+    }
+
+    if (!currentAnswer.trim() && timeLeft > 0) return;
+
+    setIsSubmitting(true);
+
+    try {
+      // Get AI evaluation
+      const response = await fetch("/api/evaluate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: currentQuestion.question,
+          answer: currentAnswer,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to evaluate answer");
+
+      const evaluation = await response.json();
+      const timeSpent =
+        getTimeLimitForDifficulty(currentQuestion.difficulty) - timeLeft;
+
+      // Update question with answer and evaluation
+      const updatedQuestions = questions.map((q, index) =>
+        index === currentQuestionIndex
+          ? {
+              ...q,
+              answer: currentAnswer,
+              score: evaluation.score,
+              feedback: evaluation.feedback,
+              timeSpent,
+              submittedAt: Date.now(),
+            }
+          : q
+      );
+
+      // Update state in IndexedDB
+      const state = await getInterviewState();
+      if (state) {
+        state.questions = updatedQuestions;
+        state.isPaused = true; // Stop timer
+        await saveInterviewState(state);
+      }
+
+      setQuestions(updatedQuestions);
+      setIsPaused(true);
+      setShowNextButton(true);
+      setIsSubmitting(false);
+    } catch (error) {
+      console.error("Error submitting answer:", error);
+      setIsSubmitting(false);
+    }
+  };
 
   const handleNextQuestion = async () => {
+    // Ensure the current question has been processed (answered or time-upped)
+    // Before moving to the next one.
+    if (!currentQuestion || (!currentQuestion.answer && !showNextButton)) {
+      console.warn(
+        "Cannot move to next question: Current question not processed."
+      );
+      return;
+    }
+
     setCurrentQuestionIndex((prevIndex) => {
       const nextIndex = prevIndex + 1;
 
       if (nextIndex >= TOTAL_QUESTIONS) {
+        // Interview complete
         const completeInterview = async () => {
           const state = await getInterviewState();
           if (state) {
@@ -427,28 +424,30 @@ export default function InterviewPage() {
             await saveInterviewState(state);
           }
           setIsInterviewComplete(true);
-          const candidates = await getCandidateData();
-          if (candidates) localStorage.setItem("email", candidates.email);
+          const candidate = await getCandidateData();
+          localStorage.setItem("email", candidate?.email || "");
           await fetch("/api/interview", {
             method: "POST",
             body: JSON.stringify({
-              questions: state?.questions,
-              candidateData: candidates,
+              questions: state?.questions || [],
+              candidateData: candidate,
             }),
-          });
+          })
         };
         completeInterview();
-        return prevIndex;
+        return prevIndex; // Stay on the last question until interview completion UI is shown
       }
 
       const processNextQuestion = async () => {
         const state = await getInterviewState();
         if (!state) return;
 
+        // Generate next question if it's a placeholder
         const nextQuestion = state.questions[nextIndex];
         if (nextQuestion && nextQuestion.id.startsWith("q_placeholder")) {
-          await generateQuestion(nextIndex);
+          await generateQuestion(nextIndex); // This function will update state in IndexedDB and component state
         } else {
+          // If not a placeholder, just update state for next question
           state.currentIndex = nextIndex;
           const timeLimit = getTimeLimitForDifficulty(
             state.questions[nextIndex].difficulty
@@ -457,7 +456,7 @@ export default function InterviewPage() {
           state.isPaused = false;
           await saveInterviewState(state);
 
-          setQuestions([...state.questions]);
+          setQuestions([...state.questions]); // Update questions state from IndexedDB
           setTimeLeft(timeLimit);
           setIsPaused(false);
           setCurrentAnswer("");
@@ -468,6 +467,21 @@ export default function InterviewPage() {
 
       return nextIndex;
     });
+  };
+
+  const handlePauseResume = async () => {
+    const newPausedState = !isPaused;
+    setIsPaused(newPausedState);
+
+    // Update state in IndexedDB
+    const state = await getInterviewState();
+    if (state) {
+      state.isPaused = newPausedState;
+      if (!newPausedState && state.timerEndsAt === 0) {
+        state.timerEndsAt = Date.now() + timeLeft * 1000;
+      }
+      await saveInterviewState(state);
+    }
   };
 
   const getTimerColor = () => {
@@ -486,6 +500,21 @@ export default function InterviewPage() {
         return "bg-red-100 text-red-800";
       default:
         return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const getTimeLimitForDifficulty = (
+    difficulty: "EASY" | "MEDIUM" | "HARD"
+  ): number => {
+    switch (difficulty) {
+      case "EASY":
+        return 20;
+      case "MEDIUM":
+        return 60;
+      case "HARD":
+        return 120;
+      default:
+        return 20; // Default to easy
     }
   };
 
@@ -512,6 +541,7 @@ export default function InterviewPage() {
     );
   }
 
+  // Fullscreen prompt
   if (showFullscreenPrompt && !isFullscreen) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -522,7 +552,8 @@ export default function InterviewPage() {
               Fullscreen Required
             </h1>
             <p className="text-gray-600 mb-6">
-              To start the interview, please enter fullscreen mode.
+              For the best interview experience, please enter fullscreen mode.
+              This helps you focus on the questions without distractions.
             </p>
             <Button onClick={enterFullscreen} size="lg" className="w-full">
               <Maximize2 className="h-5 w-5 mr-2" />
@@ -563,7 +594,7 @@ export default function InterviewPage() {
                 onClick={exitFullscreen}
                 variant="outline"
                 size="lg"
-                className="px-8 py-6 hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="px-8 py-6"
               >
                 <Minimize2 className="h-5 w-5 mr-2" />
                 Exit Fullscreen
@@ -593,18 +624,25 @@ export default function InterviewPage() {
               </h2>
             </div>
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className="hover:bg-gray-100 dark:hover:bg-gray-800"
               onClick={() => setSidebarOpen(false)}
             >
               <X className="h-4 w-4" />
             </Button>
           </div>
 
+          {/* Candidate Info */}
+          <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+            <h3 className="font-medium text-gray-900 mb-2">
+              {candidateData.name}
+            </h3>
+            <p className="text-sm text-gray-600">{candidateData.email}</p>
+          </div>
+
           {/* Timer */}
           <Card className="mb-6">
-            <CardContent className="p-2 text-center">
+            <CardContent className="p-4 text-center">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Timer className="h-5 w-5 text-gray-500" />
                 <span className="text-sm text-gray-600">Time Remaining</span>
@@ -643,8 +681,8 @@ export default function InterviewPage() {
               const isCurrent = index === currentQuestionIndex;
               const isAnswered =
                 question?.answer !== undefined && question.answer !== "";
-              const isClickable = isCurrent;
-              const isPast = index < currentQuestionIndex && !isAnswered;
+              const isClickable = index <= currentQuestionIndex || isAnswered;
+
               return (
                 <motion.div
                   key={question?.id || `placeholder_${index}`}
@@ -653,15 +691,13 @@ export default function InterviewPage() {
                   transition={{ delay: index * 0.05 }}
                   className={`p-3 rounded-lg transition-all ${
                     isClickable
-                      ? "cursor-pointer"
+                      ? "cursor-pointer hover:bg-gray-200"
                       : "cursor-not-allowed opacity-50"
                   } ${
                     isCurrent
                       ? "bg-blue-100 border-2 border-blue-500"
                       : isAnswered
                       ? "bg-green-100"
-                      : isPast
-                      ? "bg-red-100"
                       : "bg-gray-100"
                   }`}
                   onClick={() => isClickable && setCurrentQuestionIndex(index)}
@@ -697,10 +733,8 @@ export default function InterviewPage() {
                             {question.score}%
                           </span>
                         )}
-                        {!isPast && !isCurrent && (
-                          <span className="text-xs text-gray-500">
-                            <CiLock className="h-4 w-4" />
-                          </span>
+                        {!isClickable && (
+                          <span className="text-xs text-gray-500">Locked</span>
                         )}
                       </div>
                     </div>
@@ -758,10 +792,17 @@ export default function InterviewPage() {
               </div>
               <Button
                 variant="outline"
-                className="hover:bg-gray-100"
                 size="sm"
-                onClick={exitFullscreen}
+                onClick={handlePauseResume}
+                disabled={isSubmitting}
               >
+                {isPaused ? (
+                  <Play className="h-4 w-4" />
+                ) : (
+                  <Pause className="h-4 w-4" />
+                )}
+              </Button>
+              <Button variant="outline" size="sm" onClick={exitFullscreen}>
                 <Minimize2 className="h-4 w-4" />
               </Button>
             </div>
@@ -772,131 +813,123 @@ export default function InterviewPage() {
         </div>
 
         {/* Question Content */}
-        <div className="flex-1 p-4">
+        <div className="flex-1 p-6">
           <Card className="h-full">
-            <CardContent className="p-4 h-full flex flex-col">
+            <CardContent className="p-8 h-full flex flex-col">
               <div className="flex-1">
-                {currentQuestion.id.startsWith("q_placeholder") ? (
-                  <div className="flex flex-col items-center justify-center h-full">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-                    <p className="text-gray-600">Loading question...</p>
-                  </div>
-                ) : (
-                  <>
-                    <h2 className="text-2xl font-semibold text-gray-900 mb-8">
-                      {currentQuestion.question}
-                    </h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-8">
+                  {currentQuestion.question}
+                </h2>
 
-                    <div className="space-y-6">
-                      <Textarea
-                        value={currentAnswer}
-                        onChange={(e) => setCurrentAnswer(e.target.value)}
-                        placeholder="Type your answer here..."
-                        className="min-h-[150px] resize-none text-lg"
-                        disabled={
-                          isSubmitting ||
-                          isPaused ||
-                          (timeLeft === 0 && !currentAnswer.trim())
-                        }
-                      />
+                <div className="space-y-6">
+                  <Textarea
+                    value={currentAnswer}
+                    onChange={(e) => setCurrentAnswer(e.target.value)}
+                    placeholder="Type your answer here..."
+                    className="min-h-[300px] resize-none text-lg"
+                    disabled={
+                      isSubmitting ||
+                      isPaused ||
+                      (timeLeft === 0 && !currentAnswer.trim())
+                    }
+                  />
 
-                      {timeLeft === 0 &&
-                        !currentAnswer.trim() &&
-                        currentQuestion.rawSolution && (
-                          <div className="space-y-4 p-4 rounded-md bg-red-50 border border-red-200">
-                            <h3 className="text-lg font-semibold text-red-700">
-                              Time Up! No Answer Submitted.
-                            </h3>
-                            <div className="text-gray-700">
-                              <h4 className="font-medium mb-2">
-                                Suggested Solution:
-                              </h4>
-                              <p className="whitespace-pre-wrap">
-                                {currentQuestion.rawSolution}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-
-                      {currentQuestion.feedback && currentQuestion.answer && (
-                        <div className="space-y-4 p-4 rounded-md bg-blue-50 border border-blue-200">
-                          <h3 className="text-lg font-semibold text-blue-700">
-                            Feedback & Score: {currentQuestion.score}%
-                          </h3>
-                          <p className="text-gray-700 max-h-[150px] overflow-y-auto">
-                            {currentQuestion.feedback}
+                  {timeLeft === 0 &&
+                    !currentAnswer.trim() &&
+                    currentQuestion.rawSolution && (
+                      <div className="space-y-4 p-4 rounded-md bg-red-50 border border-red-200">
+                        <h3 className="text-lg font-semibold text-red-700">
+                          Time Up! No Answer Submitted.
+                        </h3>
+                        <div className="text-gray-700">
+                          <h4 className="font-medium mb-2">
+                            Suggested Solution:
+                          </h4>
+                          <p className="whitespace-pre-wrap">
+                            {currentQuestion.rawSolution}
                           </p>
-                          {currentQuestion.rawSolution && (
-                            <div className="text-gray-700">
-                              <h4 className="font-medium mb-2">
-                                Suggested Solution:
-                              </h4>
-                              <p className="whitespace-pre-wrap">
-                                {currentQuestion.rawSolution}
-                              </p>
-                            </div>
-                          )}
+                        </div>
+                      </div>
+                    )}
+
+                  {currentQuestion.feedback && currentQuestion.answer && (
+                    <div className="space-y-4 p-4 rounded-md bg-blue-50 border border-blue-200">
+                      <h3 className="text-lg font-semibold text-blue-700">
+                        Feedback & Score: {currentQuestion.score}%
+                      </h3>
+                      <p className="text-gray-700">
+                        {currentQuestion.feedback}
+                      </p>
+                      {currentQuestion.rawSolution && (
+                        <div className="text-gray-700">
+                          <h4 className="font-medium mb-2">
+                            Suggested Solution:
+                          </h4>
+                          <p className="whitespace-pre-wrap">
+                            {currentQuestion.rawSolution}
+                          </p>
                         </div>
                       )}
-
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-4">
-                          <p className="text-sm text-gray-500">
-                            {currentAnswer.length} characters
-                          </p>
-                          {timeLeft <= 10 && timeLeft > 0 && (
-                            <div className="flex items-center gap-1 text-red-500">
-                              <AlertCircle className="h-4 w-4" />
-                              <span className="text-sm">Time running out!</span>
-                            </div>
-                          )}
-                        </div>
-                        {showNextButton || currentQuestion.answer ? (
-                          <Button
-                            onClick={handleNextQuestion}
-                            size="lg"
-                            className="px-8 cursor-pointer"
-                          >
-                            {currentQuestionIndex + 1 == TOTAL_QUESTIONS ? (
-                              <>
-                                <CheckCircle className="h-4 w-4 mr-2" />
-                                Submit Test
-                              </>
-                            ) : (
-                              <>
-                                <ArrowRight className="h-4 w-4 mr-2" />
-                                Next Question
-                              </>
-                            )}
-                          </Button>
-                        ) : (
-                          <Button
-                            onClick={handleSubmitAnswer}
-                            disabled={
-                              !currentAnswer.trim() ||
-                              isSubmitting ||
-                              (timeLeft === 0 && !currentAnswer.trim())
-                            }
-                            size="lg"
-                            className="px-8"
-                          >
-                            {isSubmitting ? (
-                              <div className="flex items-center gap-2">
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                Processing...
-                              </div>
-                            ) : (
-                              <>
-                                <Send className="h-4 w-4 mr-2" />
-                                Submit Answer
-                              </>
-                            )}
-                          </Button>
-                        )}
-                      </div>
                     </div>
-                  </>
-                )}
+                  )}
+
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                      <p className="text-sm text-gray-500">
+                        {currentAnswer.length} characters
+                      </p>
+                      {timeLeft <= 10 && timeLeft > 0 && (
+                        <div className="flex items-center gap-1 text-red-500">
+                          <AlertCircle className="h-4 w-4" />
+                          <span className="text-sm">Time running out!</span>
+                        </div>
+                      )}
+                    </div>
+                    {showNextButton ? (
+                      <Button
+                        onClick={handleNextQuestion}
+                        size="lg"
+                        className="px-8"
+                      >
+                        {questions.filter((q) => q.timeSpent && q.timeSpent > 0)
+                          .length >= TOTAL_QUESTIONS ? (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Complete Interview
+                          </>
+                        ) : (
+                          <>
+                            <ArrowRight className="h-4 w-4 mr-2" />
+                            Next Question
+                          </>
+                        )}
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={handleSubmitAnswer}
+                        disabled={
+                          !currentAnswer.trim() ||
+                          isSubmitting ||
+                          (timeLeft === 0 && !currentAnswer.trim())
+                        }
+                        size="lg"
+                        className="px-8"
+                      >
+                        {isSubmitting ? (
+                          <div className="flex items-center gap-2">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            Processing...
+                          </div>
+                        ) : (
+                          <>
+                            <Send className="h-4 w-4 mr-2" />
+                            Submit Answer
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
