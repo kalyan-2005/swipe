@@ -183,7 +183,7 @@ export default function CandidatePage() {
       } catch (error) {
         console.error(error);
         simulateBotResponse(
-          "Sorry, I couldn&apos;t process your resume. Could you please provide your details manually?",
+          "Sorry, I couldn't process your resume. Could you please provide your details manually?",
           2000
         );
         setCurrentStep("verify");
