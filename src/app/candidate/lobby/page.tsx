@@ -18,18 +18,75 @@ interface CandidateData {
 
 export default function LobbyPage() {
   const [candidate, setCandidate] = useState<CandidateData | null>(null);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    getCandidateData().then((data) => {
-      if (!data) router.push("/candidate");
-      else setCandidate(data);
-    });
+    const checkCandidateAndEmail = async () => {
+      const data = await getCandidateData();
+      if (!data) {
+        router.push("/candidate");
+        return;
+      }
+
+      setCandidate(data);
+
+      // Check if user already has an interview
+      try {
+        const response = await fetch(
+          `/api/interview-by-email?email=${data.email}`
+        );
+        if (response.ok) {
+          // User already has an interview, redirect to results
+          localStorage.setItem("email", data.email);
+          router.push("/candidate/results");
+        } else {
+          // No existing interview, allow to start
+          setIsCheckingEmail(false);
+        }
+      } catch (error) {
+        console.error("Error checking existing interview:", error);
+        // If there's an error, allow to proceed
+        setIsCheckingEmail(false);
+      }
+    };
+
+    checkCandidateAndEmail();
   }, [router]);
 
   const startInterview = () => router.push("/candidate/interview");
 
-  if (!candidate) return null;
+  if (!candidate || isCheckingEmail) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <nav className="border-b bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Target className="h-8 w-8 text-blue-600" />
+                <span className="sm:text-2xl font-bold text-gray-900 dark:text-white">
+                  Swipe Interviews
+                </span>
+              </div>
+            </div>
+          </div>
+        </nav>
+        <div className="flex flex-1 items-center justify-center sm:p-6">
+          <div className="w-full max-w-4xl">
+            <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                Checking Interview Status...
+              </h2>
+              <p className="text-gray-600">
+                Please wait while we verify your interview eligibility.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">

@@ -237,7 +237,7 @@ export default function CandidatePage() {
   };
 
   const handleConfirmInfo = () => {
-    addMessage("Yes, that&apos;s correct!", "user");
+    addMessage("Yes, that's correct!", "user");
     // setShowConfirmation(false);
     simulateBotResponse(
       "Excellent! Let me prepare your interview session...",
@@ -257,7 +257,7 @@ export default function CandidatePage() {
   };
 
   const handleRejectInfo = () => {
-    addMessage("No, that's not correct", "user");
+    addMessage("No, that's not correct!", "user");
     setShowConfirmation(false);
     simulateBotResponse(
       "No problem! Please correct the information below and I'll use the updated details.",
