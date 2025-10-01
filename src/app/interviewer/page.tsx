@@ -52,11 +52,13 @@ export default function InterviewerDashboard() {
   } | null>(null);
 
   useEffect(() => {
+    setIsLoading(true);
     const fetchCandidates = async () => {
       const response = await fetch("/api/dashboard");
       const result = await response.json();
       setCandidates(result);
       setFilteredCandidates(result);
+      setIsLoading(false);
     };
     fetchCandidates();
   }, []);
@@ -339,84 +341,99 @@ export default function InterviewerDashboard() {
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
-                    {filteredCandidates.map((interview) => (
-                      <TableRow
-                        key={interview.id}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-800 max-sm:text-xs"
-                      >
-                        <TableCell className="font-medium">
-                          {interview.candidate.name}
-                        </TableCell>
-                        <TableCell>{interview.candidate.email}</TableCell>
-                        <TableCell>
-                          <span
-                            className={getScoreColor(
-                              interview.questions.length > 0
-                                ? interview.questions.reduce(
-                                    (sum: number, question: Question) =>
-                                      sum + (question.score || 0),
-                                    0
-                                  ) / interview.questions.length
-                                : 0
-                            )}
-                          >
-                            {interview.questions.length > 0
-                              ? `${Math.round(
-                                  interview.questions.reduce(
-                                    (sum: number, question: Question) =>
-                                      sum + (question.score || 0),
-                                    0
-                                  ) / interview.questions.length
-                                )}%`
-                              : "N/A"}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          {interview.questions.length > 0
-                            ? interview.questions.reduce(
-                                (sum: number, question: Question) =>
-                                  sum + (question.timeSpent || 0),
-                                0
-                              )
-                            : "N/A"}
-                        </TableCell>
-                        <TableCell>
-                          {interview.createdAt
-                            ? new Date(interview.createdAt).toLocaleDateString()
-                            : "N/A"}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                router.push(
-                                  `/interviewer/candidate/${interview.id}`
-                                )
-                              }
-                              className="hover:bg-gray-100"
-                            >
-                              <Eye className="h-4 w-4 mr-1" />
-                              View
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="hover:bg-gray-100"
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                          </div>
+                  {isLoading ? (
+                    <TableBody>
+                      <TableRow className="animate-pulse">
+                        <TableCell className="text-center space-y-2" colSpan={6}>
+                          <div className="h-8 w-full bg-gray-200 rounded-md"></div>
+                          <div className="h-8 w-full bg-gray-200 rounded-md"></div>
+                          <div className="h-8 w-full bg-gray-200 rounded-md"></div>
+                          <div className="h-8 w-full bg-gray-200 rounded-md"></div>
                         </TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
+                    </TableBody>
+                  ) : (
+                    <TableBody>
+                      {filteredCandidates.map((interview) => (
+                        <TableRow
+                          key={interview.id}
+                          className="hover:bg-gray-50 dark:hover:bg-gray-800 max-sm:text-xs"
+                        >
+                          <TableCell className="font-medium">
+                            {interview.candidate.name}
+                          </TableCell>
+                          <TableCell>{interview.candidate.email}</TableCell>
+                          <TableCell>
+                            <span
+                              className={getScoreColor(
+                                interview.questions.length > 0
+                                  ? interview.questions.reduce(
+                                      (sum: number, question: Question) =>
+                                        sum + (question.score || 0),
+                                      0
+                                    ) / interview.questions.length
+                                  : 0
+                              )}
+                            >
+                              {interview.questions.length > 0
+                                ? `${Math.round(
+                                    interview.questions.reduce(
+                                      (sum: number, question: Question) =>
+                                        sum + (question.score || 0),
+                                      0
+                                    ) / interview.questions.length
+                                  )}%`
+                                : "N/A"}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {interview.questions.length > 0
+                              ? interview.questions.reduce(
+                                  (sum: number, question: Question) =>
+                                    sum + (question.timeSpent || 0),
+                                  0
+                                )
+                              : "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {interview.createdAt
+                              ? new Date(
+                                  interview.createdAt
+                                ).toLocaleDateString()
+                              : "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  router.push(
+                                    `/interviewer/candidate/${interview.id}`
+                                  )
+                                }
+                                className="hover:bg-gray-100"
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                View
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="hover:bg-gray-100"
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  )}
                 </Table>
               </div>
 
-              {filteredCandidates.length === 0 && (
+              {filteredCandidates.length === 0 && !isLoading && (
                 <div className="text-center py-8">
                   <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-500 dark:text-gray-400">

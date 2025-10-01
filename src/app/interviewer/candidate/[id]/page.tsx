@@ -24,7 +24,7 @@ import {
   Star,
   FileText,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 
 interface Question {
   id: string;
@@ -34,10 +34,6 @@ interface Question {
   score: number;
   feedback: string;
   timeSpent: number;
-}
-
-interface PageProps {
-  params: Promise<{ id: string }>;
 }
 
 interface Candidate {
@@ -53,19 +49,16 @@ interface Candidate {
   questions: Question[];
 }
 
-// eslint-disable-next-line @next/next/no-async-client-component
-export default async function CandidateDetailPage({ params }: PageProps) {
-  const { id } = await params;
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+export default function CandidateDetailPage() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id as string | undefined;
   const [candidate, setCandidate] = useState<Candidate | null>(null);
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const [isLoading, setIsLoading] = useState(true);
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const router = useRouter();
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     const fetchCandidate = async () => {
+      if (!id) return;
       setIsLoading(true);
       try {
         const response = await fetch(`/api/interview?interviewId=${id}`);
@@ -83,7 +76,7 @@ export default async function CandidateDetailPage({ params }: PageProps) {
           interviewCount: 1,
           averageScore: data.score,
           lastInterview: data.completedAt,
-          status: data.status === "COMPLETED" ? "completed" : "in-progress", // Map status from API to frontend interface
+          status: data.status === "COMPLETED" ? "completed" : "in-progress",
           questions: data.questions.map((q: Question) => ({
             id: q.id,
             question: q.question,
