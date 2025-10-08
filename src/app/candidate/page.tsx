@@ -231,7 +231,6 @@ export default function CandidatePage() {
         createdAt: Date.now(),
       };
       await saveCandidateData(candidateData);
-      localStorage.setItem("candidateData", JSON.stringify(candidateData));
       router.push("/candidate/lobby");
     }, 3000);
   };

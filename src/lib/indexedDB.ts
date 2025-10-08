@@ -19,6 +19,7 @@ interface Question {
 
 interface InterviewState {
   id: string;
+  email: string;
   questions: Question[];
   currentIndex: number;
   timerEndsAt: number;
@@ -100,7 +101,8 @@ export const saveInterviewState = async (state: InterviewState) => {
 export const getInterviewState = async (): Promise<InterviewState | null> => {
   const db = await initDB();
   const states = await db.getAll(STATE_STORE);
-  return states.length > 0 ? states[states.length - 1] : null;
+  const latestState = states.find((state) => state.email === localStorage.getItem("email"));
+  return latestState ? latestState : null;
 };
 
 export const clearInterviewState = async () => {

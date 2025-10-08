@@ -83,19 +83,6 @@ export default function ResultsPage() {
 
         setQuestions(interviewData.questions);
         setCandidateData(interviewData.candidate);
-        const reportResponse = await fetch("/api/interview", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            questions: interviewData.questions,
-            candidateData: interviewData.candidate,
-          }),
-        });
-
-        if (reportResponse.ok) {
-          const reportData = await reportResponse.json();
-          setReport(reportData);
-        }
 
         setIsLoading(false);
       } catch (error) {

@@ -75,7 +75,7 @@ export async function GET(req: Request) {
       include: {
         candidate: true,
         questions: {
-          orderBy: { questionNumber: "asc" },
+          orderBy: { createdAt: "asc" },
         },
       },
     });

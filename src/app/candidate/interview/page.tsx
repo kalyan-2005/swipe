@@ -34,6 +34,7 @@ import {
   type CandidateData,
 } from "@/lib/indexedDB";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 
 const TOTAL_QUESTIONS = 6;
 
@@ -58,7 +59,7 @@ export default function InterviewPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth<900?false:true);
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(true);
   const [showNextButton, setShowNextButton] = useState(false);
   const [loader, setLoader] = useState(false);
@@ -99,6 +100,7 @@ export default function InterviewPage() {
           );
           state = {
             id: `interview_${Date.now()}`,
+            email: candidate.email,
             questions: initialQuestions,
             currentIndex: 0,
             timerEndsAt: 0,
@@ -131,6 +133,9 @@ export default function InterviewPage() {
 
         // Calculate time left
         const currentQ = state.questions[state.currentIndex];
+        if(currentQ.feedback) {
+          setShowNextButton(true);
+        }
         if (state.timerEndsAt > 0 && !state.isPaused && !state.isComplete) {
           const remaining = Math.max(
             0,
@@ -294,7 +299,6 @@ export default function InterviewPage() {
 
   const handleSubmitAnswer = async () => {
     if (!currentAnswer.trim() && timeLeft === 0) {
-      // Fetch solution from new API endpoint
       try {
         const updatedQuestions = questions.map((q, index) =>
           index === currentQuestionIndex
@@ -423,20 +427,24 @@ export default function InterviewPage() {
         // Interview complete
         const completeInterview = async () => {
           const state = await getInterviewState();
-          if (state) {
-            state.isComplete = true;
-            await saveInterviewState(state);
+          if (!state) {
+            return;
           }
-          setIsInterviewComplete(true);
           const candidate = await getCandidateData();
-          localStorage.setItem("email", candidate?.email || "");
-          await fetch("/api/interview", {
+          await saveInterviewState(state);
+          const res = await fetch("/api/interview", {
             method: "POST",
             body: JSON.stringify({
               questions: state?.questions || [],
               candidateData: candidate,
             }),
           });
+          if(res.ok) {
+            setIsInterviewComplete(true);
+            state.isComplete = true;
+          } else {
+            toast.error("Failed to submit interview, please try again");
+          }
         };
         completeInterview();
         return prevIndex; // Stay on the last question until interview completion UI is shown
@@ -616,7 +624,7 @@ export default function InterviewPage() {
       <motion.div
         initial={false}
         animate={{ width: sidebarOpen ? 320 : 0 }}
-        className="bg-white border-r border-gray-200 overflow-hidden"
+        className="bg-white border-r border-gray-200 overflow-hidden max-md:absolute top-0 z-50"
       >
         <div className="p-6">
           {/* Header */}
@@ -749,7 +757,7 @@ export default function InterviewPage() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Top Bar */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-40">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               {!sidebarOpen && (
@@ -762,10 +770,10 @@ export default function InterviewPage() {
                 </Button>
               )}
               <div>
-                <h1 className="text-xl font-bold text-gray-900">
+                <h1 className="md:text-xl font-bold text-gray-900">
                   Question {currentQuestionIndex + 1} of {questions.length}
                 </h1>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-1 sm:gap-2 sm:mt-1">
                   <Badge
                     className={`${
                       currentQuestion.difficulty === "EASY"
@@ -773,11 +781,11 @@ export default function InterviewPage() {
                         : currentQuestion.difficulty === "MEDIUM"
                         ? "bg-yellow-100 text-yellow-800"
                         : "bg-red-100 text-red-800"
-                    }`}
+                    } max-sm:text-xs`}
                   >
                     {currentQuestion.difficulty}
                   </Badge>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-gray-500 max-sm:text-xs">
                     {candidateData.name}
                   </span>
                 </div>
@@ -785,17 +793,17 @@ export default function InterviewPage() {
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-gray-500" />
+                <Clock className="h-3 w-3 sm:h-5 sm:w-5 text-gray-500" />
                 {loader ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
                 ) : (
-                  <span className={`text-2xl font-bold ${getTimerColor()}`}>
+                  <span className={`md:text-2xl font-bold ${getTimerColor()}`}>
                     {timeLeft}
                   </span>
                 )}
               </div>
-              <Button variant="outline" size="sm" onClick={exitFullscreen}>
-                <Minimize2 className="h-4 w-4" />
+              <Button variant="outline" className="hover:bg-gray-100" size="sm" onClick={exitFullscreen}>
+                <Minimize2 className="h-3 w-3 sm:h-4 sm:w-4" />
               </Button>
             </div>
           </div>
@@ -812,11 +820,11 @@ export default function InterviewPage() {
             <Skeleton className="h-1/3 w-full rounded-lg" />
           </div>
         ) : (
-          <div className="flex-1 p-6">
-            <Card className="h-full">
-              <CardContent className="p-8 h-full flex flex-col">
+          <div className="flex-1 p-6 max-sm:p-2">
+            <Card className="sm:h-full">
+              <CardContent className="p-8 h-full flex flex-col max-sm:p-2">
                 <div className="flex-1">
-                  <h2 className="text-2xl font-semibold text-gray-900 mb-8 max-h-[200px] overflow-y-auto">
+                  <h2 className="sm:text-2xl font-semibold text-gray-900 mb-8 max-h-[200px] overflow-y-auto">
                     {currentQuestion.question}
                   </h2>
 
@@ -825,7 +833,7 @@ export default function InterviewPage() {
                       value={currentAnswer}
                       onChange={(e) => setCurrentAnswer(e.target.value)}
                       placeholder="Type your answer here..."
-                      className="min-h-[150px] resize-none text-lg"
+                      className="min-h-[150px] resize-none sm:text-lg"
                       disabled={
                         isSubmitting ||
                         isPaused ||
@@ -899,8 +907,8 @@ export default function InterviewPage() {
                             </>
                           ) : (
                             <>
-                              <ArrowRight className="h-4 w-4 mr-2" />
-                              Next Question
+                              <ArrowRight className="h-2 w-2 sm:h-4 sm:w-4 sm:mr-2" />
+                              Next <span className="max-sm:hidden">Question</span>
                             </>
                           )}
                         </Button>

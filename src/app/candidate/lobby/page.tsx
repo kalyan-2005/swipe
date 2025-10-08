@@ -30,6 +30,7 @@ export default function LobbyPage() {
       }
 
       setCandidate(data);
+      localStorage.setItem("email", data.email);
 
       // Check if user already has an interview
       try {
@@ -38,7 +39,6 @@ export default function LobbyPage() {
         );
         if (response.ok) {
           // User already has an interview, redirect to results
-          localStorage.setItem("email", data.email);
           router.push("/candidate/results");
         } else {
           // No existing interview, allow to start
@@ -87,7 +87,7 @@ export default function LobbyPage() {
       </div>
     );
   }
-
+  // return <pre>{JSON.stringify(candidate, null, 2)}</pre>
   return (
     <div className="min-h-screen flex flex-col">
       {/* Navigation */}{" "}
