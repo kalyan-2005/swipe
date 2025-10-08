@@ -59,7 +59,7 @@ export default function InterviewPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth<900?false:true);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(true);
   const [showNextButton, setShowNextButton] = useState(false);
   const [loader, setLoader] = useState(false);
@@ -186,6 +186,7 @@ export default function InterviewPage() {
         }
 
         setIsLoading(false);
+        if(window.innerWidth<900) setSidebarOpen(false);
       } catch (error) {
         console.error("Error initializing interview:", error);
         setIsLoading(false);
